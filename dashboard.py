@@ -258,6 +258,30 @@ def load_curve():
         return []
 
 
+def drawdown_stats(curve, current):
+    """用 equity_curve.json（＋目前淨值）算每位的回撤序列與最大回撤（峰值從起始資金 US$10,000 起算）"""
+    ids = list(AGENT_META)
+    peak = {a: START_CASH for a in ids}
+    mdd = {a: 0.0 for a in ids}
+    series = []
+    pts = list(curve) + [{'t': '現在', 'equity': current}]
+    for p in pts:
+        row = {}
+        for a in ids:
+            v = (p.get('equity') or {}).get(a)
+            if v is None:
+                continue
+            v = float(v)
+            peak[a] = max(peak[a], v)
+            dd = (peak[a] - v) / peak[a] * 100.0 if peak[a] else 0.0
+            mdd[a] = max(mdd[a], dd)
+            row[a] = round(-dd, 2)
+        if row:
+            series.append({'t': p.get('t', ''), 'dd': row})
+    cur = {a: (series[-1]['dd'].get(a) if series else None) for a in ids}
+    return {a: round(mdd[a], 2) for a in ids}, {a: (-cur[a] if cur[a] is not None else 0.0) for a in ids}, series
+
+
 def build_state(fast=True):
     state = json.load(open(STATE_FILE, encoding='utf-8')) if os.path.exists(STATE_FILE) else {
         'accounts': {a: {'cash': START_CASH} for a in ('claude', 'agy', 'codex')},
@@ -379,6 +403,8 @@ def build_state(fast=True):
             'closed_count': len(tr_list),
             'open_count': len(enriched_pos),
             'win_rate': round(win_rate, 1) if win_rate is not None else None,
+            'wins': len(wins),
+            'losses': len(tr_list) - len(wins),
             'avg_r': round(avg_r, 2) if avg_r is not None else None,
             'positions': enriched_pos,
             'trades': tr_list,
@@ -387,6 +413,12 @@ def build_state(fast=True):
 
     # 依淨值高低排序
     agents_summary.sort(key=lambda x: x['equity'], reverse=True)
+
+    curve = load_curve()
+    mdd, cur_dd, dd_series = drawdown_stats(curve, {a['id']: a['equity'] for a in agents_summary})
+    for a in agents_summary:
+        a['max_dd_pct'] = mdd.get(a['id'], 0.0)
+        a['cur_dd_pct'] = round(cur_dd.get(a['id'], 0.0), 2)
 
     notes = read_learning_notes()
     events = read_discord_events(state, ext)
@@ -406,7 +438,8 @@ def build_state(fast=True):
         'trades': all_trades,
         'notes': notes,
         'events': events,
-        'equity_curve': load_curve()
+        'equity_curve': curve,
+        'drawdown_curve': dd_series[-400:]
     }
 
     return payload
@@ -429,6 +462,32 @@ def render_html(payload):
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>⚔️ Discord 五大 AI 模擬交易對戰觀戰面板</title>
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    html, body {{ max-width: 100%; overflow-x: hidden; }}
+    p, td, .break-anywhere {{ overflow-wrap: anywhere; }}
+    .bar-track {{ height: 10px; border-radius: 4px; background: var(--secondary, rgba(127,127,127,.15)); overflow: hidden; }}
+    .bar-fill {{ height: 100%; border-radius: 0 4px 4px 0; }}
+    /* 手機（< 768px）：表格改卡片，每格前面顯示欄名，不再水平捲動 */
+    @media (max-width: 767px) {{
+      body {{ padding: 12px !important; }}
+      table.rt thead {{ display: none; }}
+      table.rt, table.rt tbody, table.rt tr, table.rt td {{ display: block; width: 100%; max-width: 100%; }}
+      table.rt tbody {{ border: 0 !important; }}
+      table.rt tr {{ border: 1px solid var(--border, rgba(127,127,127,.3)) !important; border-radius: 12px; padding: 8px 12px; margin-bottom: 10px;
+                    background: var(--background, transparent); }}
+      table.rt td {{ display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; text-align: right !important;
+                    padding: 5px 0 !important; border: 0 !important; }}
+      table.rt td[data-label]::before {{ content: attr(data-label); flex-shrink: 0; text-align: left; font-size: 12px; font-weight: 400;
+                    color: var(--muted-foreground, #9ca3af); text-transform: none; }}
+      table.rt td.td-block {{ display: block; text-align: left !important; }}
+      table.rt td.td-block::before {{ display: block; margin-bottom: 4px; }}
+      table.rt td.td-head {{ justify-content: flex-start; text-align: left !important; font-size: 14px; }}
+      table.rt td.td-head::before {{ content: none !important; }}
+      table.rt td[colspan] {{ justify-content: center; text-align: center !important; }}
+      .overflow-x-auto {{ overflow-x: visible; }}
+      #note-tabs {{ flex-wrap: wrap; }}
+    }}
+  </style>
 </head>
 <body class="bg-[var(--background)] text-[var(--foreground)] antialiased p-4 md:p-6 space-y-6">
 
@@ -538,7 +597,7 @@ def render_html(payload):
         </div>
 
         <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
+          <table class="rt w-full text-left border-collapse">
             <thead>
               <tr class="border-b border-[var(--border)] text-xs text-[var(--muted-foreground)]">
                 <th class="py-2.5 px-2">名次 / AI 選手</th>
@@ -585,7 +644,7 @@ def render_html(payload):
     </div>
 
     <div class="overflow-x-auto">
-      <table class="w-full text-left border-collapse">
+      <table class="rt w-full text-left border-collapse">
         <thead>
           <tr class="border-b border-[var(--border)] text-xs text-[var(--muted-foreground)]">
             <th class="py-2.5 px-2">選手</th>
@@ -618,10 +677,28 @@ def render_html(payload):
     </div>
     <div class="lg:col-span-5 bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm overflow-x-auto">
       <h2 class="text-sm font-bold mb-3">🧠 策略對照</h2>
-      <table class="w-full text-xs"><thead class="text-[var(--muted-foreground)]"><tr>
+      <table class="rt w-full text-xs"><thead class="text-[var(--muted-foreground)]"><tr>
         <th class="text-left py-1">AI</th><th class="text-right">決策</th><th class="text-right">交易</th><th class="text-right">平均風險</th><th class="text-right">平均持倉</th><th class="text-right">多/空</th><th class="text-left pl-2">常做</th>
       </tr></thead><tbody id="strategy-tbody" class="divide-y divide-[var(--border)]"></tbody></table>
       <div class="text-xs text-[var(--muted-foreground)] mt-2">平均風險＝每筆停損距離 × 股數 ÷ 起始資金；Spark、Muse 為自行記帳，以 Discord 回報為準。</div>
+    </div>
+  </section>
+
+  <!-- 勝率與最大回撤 -->
+  <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div class="lg:col-span-5 bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm">
+      <h2 class="text-sm font-bold">🎯 勝率與最大回撤</h2>
+      <p class="text-xs text-[var(--muted-foreground)] mt-0.5 mb-3">勝率＝已平倉獲利筆數 ÷ 已平倉筆數；最大回撤＝淨值從歷史高點（含起始 $10,000）往下跌的最大幅度。</p>
+      <div class="text-xs font-semibold mb-2">勝率（已平倉）</div>
+      <div id="winrate-bars" class="space-y-2.5"></div>
+      <div class="text-xs font-semibold mt-5 mb-2">最大回撤</div>
+      <div id="mdd-bars" class="space-y-2.5"></div>
+    </div>
+    <div class="lg:col-span-7 bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm">
+      <h2 class="text-sm font-bold">🌊 回撤曲線（距離歷史高點 %）</h2>
+      <p class="text-xs text-[var(--muted-foreground)] mt-0.5 mb-3">0% 代表在歷史新高；越往下代表離高點越遠。滑過線條看數值。</p>
+      <div id="drawdown-curve" class="w-full"></div>
+      <div id="drawdown-legend" class="flex flex-wrap gap-3 mt-2 text-xs"></div>
     </div>
   </section>
 
@@ -651,7 +728,7 @@ def render_html(payload):
       <div class="mt-5 pt-4 border-t border-[var(--border)]">
         <h3 class="text-sm font-bold text-[var(--foreground)] mb-2.5">🏁 已平倉結算戰績紀錄（Closed Trades）</h3>
         <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
+          <table class="rt w-full text-left border-collapse">
             <thead>
               <tr class="border-b border-[var(--border)] text-xs text-[var(--muted-foreground)]">
                 <th class="py-2 px-2">選手</th>
@@ -818,13 +895,13 @@ def render_html(payload):
       if (!tb) return;
       tb.innerHTML = STATE.agents.map(a => {{
         const s = a.strategy || {{}};
-        return `<tr><td class="py-1.5"><span style="color:${{a.color}}" class="font-bold">${{a.name}}</span></td>
-          <td class="text-right font-mono">${{s.decisions ?? '—'}}</td>
-          <td class="text-right font-mono">${{s.trades_total ?? 0}}</td>
-          <td class="text-right font-mono">${{s.avg_risk_pct != null ? s.avg_risk_pct + '%' : '—'}}</td>
-          <td class="text-right font-mono">${{s.avg_hold_h != null ? s.avg_hold_h + 'h' : '—'}}</td>
-          <td class="text-right font-mono">${{(s.long ?? 0)}}/${{(s.short ?? 0)}}</td>
-          <td class="pl-2 font-mono">${{(s.top || []).join(' ')}}</td></tr>`;
+        return `<tr><td class="py-1.5 td-head"><span style="color:${{a.color}}" class="font-bold">${{a.name}}</span></td>
+          <td data-label="決策次數" class="text-right font-mono">${{s.decisions ?? '—'}}</td>
+          <td data-label="交易筆數" class="text-right font-mono">${{s.trades_total ?? 0}}</td>
+          <td data-label="平均風險" class="text-right font-mono">${{s.avg_risk_pct != null ? s.avg_risk_pct + '%' : '—'}}</td>
+          <td data-label="平均持倉" class="text-right font-mono">${{s.avg_hold_h != null ? s.avg_hold_h + 'h' : '—'}}</td>
+          <td data-label="多/空" class="text-right font-mono">${{(s.long ?? 0)}}/${{(s.short ?? 0)}}</td>
+          <td data-label="常做" class="pl-2 font-mono">${{(s.top || []).join(' ') || '—'}}</td></tr>`;
       }}).join('');
     }}
 
@@ -833,7 +910,7 @@ def render_html(payload):
       if (!box) return;
       const pts = STATE.equity_curve || [];
       if (pts.length < 2) {{ box.innerHTML = '<div class="text-xs text-[var(--muted-foreground)] py-8 text-center">資料累積中（live_server 盤中每 30 分鐘記一筆）</div>'; return; }}
-      const W = 700, H = 220, P = 36;
+      const W = Math.max(320, box.clientWidth || 700), H = 220, P = 36;
       let lo = Infinity, hi = -Infinity;
       pts.forEach(p => Object.values(p.equity).forEach(v => {{ lo = Math.min(lo, v); hi = Math.max(hi, v); }}));
       lo = Math.min(lo, 10000); hi = Math.max(hi, 10000);
@@ -849,6 +926,50 @@ def render_html(payload):
       svg += `<text x="${{P}}" y="${{H - 4}}" font-size="10" fill="currentColor" fill-opacity="0.6">${{pts[0].t}}</text><text x="${{W - 8}}" y="${{H - 4}}" font-size="10" text-anchor="end" fill="currentColor" fill-opacity="0.6">${{pts[pts.length - 1].t}}</text></svg>`;
       box.innerHTML = svg;
       document.getElementById('equity-legend').innerHTML = STATE.agents.map(a => `<span><span style="color:${{a.color}}">●</span> ${{a.name}}</span>`).join('');
+    }}
+
+    function renderRiskCharts() {{
+      const wb = document.getElementById('winrate-bars');
+      const mb = document.getElementById('mdd-bars');
+      if (!wb || !mb) return;
+      const row = (a, label, pct, valText, sub) => `
+        <div title="${{a.name}}：${{valText}}${{sub ? '（' + sub + '）' : ''}}">
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${{a.color}}"></span><b>${{a.name}}</b></span>
+            <span class="font-mono">${{valText}}<span class="text-[var(--muted-foreground)]">${{sub ? '｜' + sub : ''}}</span></span>
+          </div>
+          <div class="bar-track"><div class="bar-fill" style="width:${{Math.max(0, Math.min(100, pct))}}%;background:${{a.color}}"></div></div>
+        </div>`;
+      wb.innerHTML = STATE.agents.map(a => {{
+        const n = (a.wins || 0) + (a.losses || 0);
+        return n ? row(a, '勝率', a.win_rate || 0, (a.win_rate || 0).toFixed(0) + '%', `${{a.wins}} 勝 ${{a.losses}} 敗`)
+                 : row(a, '勝率', 0, '—', '尚無平倉');
+      }}).join('');
+      const ddTxt = v => v > 0.004 ? '-' + v.toFixed(2) + '%' : '0.00%';
+      const maxDD = Math.max(5, ...STATE.agents.map(a => a.max_dd_pct || 0));
+      mb.innerHTML = [...STATE.agents].sort((x, y) => (x.max_dd_pct || 0) - (y.max_dd_pct || 0)).map(a =>
+        row(a, '最大回撤', (a.max_dd_pct || 0) / maxDD * 100, ddTxt(a.max_dd_pct || 0),
+            '目前 ' + ddTxt(a.cur_dd_pct || 0))).join('');
+
+      const box = document.getElementById('drawdown-curve');
+      const pts = STATE.drawdown_curve || [];
+      if (pts.length < 2) {{ box.innerHTML = '<div class="text-xs text-[var(--muted-foreground)] py-8 text-center">資料累積中（盤中每 30 分鐘記一筆淨值）</div>'; return; }}
+      const W = Math.max(320, box.clientWidth || 700), H = 200, P = 40;
+      let lo = 0;
+      pts.forEach(p => Object.values(p.dd).forEach(v => {{ lo = Math.min(lo, v); }}));
+      lo = Math.min(lo * 1.15, -1);
+      const x = i => P + (W - P - 8) * i / (pts.length - 1);
+      const y = v => 8 + (H - 30) * (v / lo);
+      let svg = `<svg viewBox="0 0 ${{W}} ${{H}}" class="w-full h-auto" role="img" aria-label="五位 AI 回撤曲線">`;
+      [0, lo / 2, lo].forEach(v => {{ svg += `<line x1="${{P}}" x2="${{W - 8}}" y1="${{y(v)}}" y2="${{y(v)}}" stroke="currentColor" stroke-opacity="0.12"/><text x="2" y="${{y(v) + 4}}" font-size="10" fill="currentColor" fill-opacity="0.6">${{v.toFixed(1)}}%</text>`; }});
+      STATE.agents.forEach(a => {{
+        const d = pts.map((p, i) => p.dd[a.id] != null ? `${{x(i)}},${{y(p.dd[a.id])}}` : null).filter(Boolean).join(' ');
+        if (d) svg += `<polyline points="${{d}}" fill="none" stroke="${{a.color}}" stroke-width="2"><title>${{a.name}} 最大回撤 ${{ddTxt(a.max_dd_pct || 0)}}，目前 ${{ddTxt(a.cur_dd_pct || 0)}}</title></polyline>`;
+        pts.forEach((p, i) => {{ if (p.dd[a.id] != null) svg += `<circle cx="${{x(i)}}" cy="${{y(p.dd[a.id])}}" r="6" fill="transparent"><title>${{a.name}} ${{p.t}}：${{p.dd[a.id].toFixed(2)}}%</title></circle>`; }});
+      }});
+      svg += `<text x="${{P}}" y="${{H - 4}}" font-size="10" fill="currentColor" fill-opacity="0.6">${{pts[0].t}}</text><text x="${{W - 8}}" y="${{H - 4}}" font-size="10" text-anchor="end" fill="currentColor" fill-opacity="0.6">${{pts[pts.length - 1].t}}</text></svg>`;
+      box.innerHTML = svg;
+      document.getElementById('drawdown-legend').innerHTML = STATE.agents.map(a => `<span><span style="color:${{a.color}}">●</span> ${{a.name}} ${{ddTxt(a.max_dd_pct || 0)}}</span>`).join('');
     }}
 
     function renderLeaderboard() {{
@@ -867,7 +988,7 @@ def render_html(payload):
 
         return `
           <tr onclick="selectAgent('${{ag.id}}')" class="cursor-pointer transition ${{rowCls}}">
-            <td class="py-3 px-2">
+            <td class="py-3 px-2 td-head">
               <div class="flex items-center gap-2">
                 <span class="text-base">${{medals[idx] || (idx + 1)}}</span>
                 <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color:${{ag.color}}"></span>
@@ -880,25 +1001,25 @@ def render_html(payload):
                 </div>
               </div>
             </td>
-            <td class="py-3 px-2 text-right font-mono font-bold text-sm text-[var(--foreground)]">
+            <td data-label="總淨值" class="py-3 px-2 text-right font-mono font-bold text-sm text-[var(--foreground)]">
               ${{fmtMoney(ag.equity)}}
             </td>
-            <td class="py-3 px-2 text-right font-mono font-bold ${{ag.ret_pct >= 0 ? 'text-emerald-500' : 'text-rose-500'}}">
+            <td data-label="累積報酬" class="py-3 px-2 text-right font-mono font-bold ${{ag.ret_pct >= 0 ? 'text-emerald-500' : 'text-rose-500'}}">
               ${{fmtPct(ag.ret_pct)}}
             </td>
-            <td class="py-3 px-2 text-right font-mono ${{ag.unrealized >= 0 ? 'text-emerald-500' : 'text-rose-400'}}">
+            <td data-label="未實現損益" class="py-3 px-2 text-right font-mono ${{ag.unrealized >= 0 ? 'text-emerald-500' : 'text-rose-400'}}">
               ${{fmtMoney(ag.unrealized, true)}}
             </td>
-            <td class="py-3 px-2 text-right font-mono ${{ag.realized > 0 ? 'text-emerald-500' : (ag.realized < 0 ? 'text-rose-400' : 'text-[var(--muted-foreground)]')}}">
+            <td data-label="已實現損益" class="py-3 px-2 text-right font-mono ${{ag.realized > 0 ? 'text-emerald-500' : (ag.realized < 0 ? 'text-rose-400' : 'text-[var(--muted-foreground)]')}}">
               ${{fmtMoney(ag.realized, true)}}
               ${{ag.closed_count > 0 ? `<div class="text-xs text-[var(--muted-foreground)]">${{ag.closed_count}}筆 (${{ag.avg_r != null ? (ag.avg_r >= 0 ? '+' : '') + ag.avg_r + 'R' : ''}})</div>` : ''}}
             </td>
-            <td class="py-3 px-2 text-right font-mono text-[var(--foreground)]">
+            <td data-label="現金（比重）" class="py-3 px-2 text-right font-mono text-[var(--foreground)]">
               ${{fmtMoney(ag.cash)}}
               <div class="text-xs text-[var(--muted-foreground)]">${{ag.cash_pct}}%</div>
             </td>
-            <td class="py-3 px-2 text-center">
-              <div class="flex flex-wrap items-center justify-center gap-1">${{posBadges}}</div>
+            <td data-label="在場倉位" class="py-3 px-2 text-center">
+              <div class="flex flex-wrap items-center justify-end md:justify-center gap-1">${{posBadges}}</div>
             </td>
           </tr>
         `;
@@ -928,24 +1049,24 @@ def render_html(payload):
 
         return `
           <tr class="hover:bg-[var(--secondary)]/20 transition align-top">
-            <td class="py-3 px-2">
+            <td class="py-3 px-2 td-head">
               <div class="flex items-center gap-1.5 font-bold text-[var(--foreground)]">
                 <span class="w-2.5 h-2.5 rounded-full" style="background-color:${{p.agent_color}}"></span>
                 <span>${{p.agent_name}}</span>
               </div>
             </td>
-            <td class="py-3 px-2">
+            <td data-label="標的 / 方向" class="py-3 px-2">
               <div class="font-bold font-mono text-sm text-[var(--foreground)]">${{p.ticker}}</div>
               <div class="mt-0.5">${{sideBadge}}</div>
             </td>
-            <td class="py-3 px-2 text-right font-mono font-semibold">${{p.qty}} 股</td>
-            <td class="py-3 px-2 text-right font-mono">$${{Number(p.entry).toFixed(2)}}</td>
-            <td class="py-3 px-2 text-right font-mono font-bold text-[var(--foreground)]">$${{Number(p.price).toFixed(2)}}</td>
-            <td class="py-3 px-2 text-right font-mono font-bold ${{p.unrealized >= 0 ? 'text-emerald-500' : 'text-rose-500'}}">
+            <td data-label="股數" class="py-3 px-2 text-right font-mono font-semibold">${{p.qty}} 股</td>
+            <td data-label="進場成本" class="py-3 px-2 text-right font-mono">$${{Number(p.entry).toFixed(2)}}</td>
+            <td data-label="最新現價" class="py-3 px-2 text-right font-mono font-bold text-[var(--foreground)]">$${{Number(p.price).toFixed(2)}}</td>
+            <td data-label="未實現損益 (R)" class="py-3 px-2 text-right font-mono font-bold ${{p.unrealized >= 0 ? 'text-emerald-500' : 'text-rose-500'}}">
               ${{fmtMoney(p.unrealized, true)}}
               <div class="text-xs">${{p.cur_r >= 0 ? '+' : ''}}${{p.cur_r}}R</div>
             </td>
-            <td class="py-3 px-3">
+            <td data-label="停損 ◀ 現價 ▶ 停利" class="py-3 px-3 td-block">
               <div class="flex items-center justify-between text-xs font-mono mb-1">
                 <span class="${{p.is_breakeven ? 'text-emerald-500 font-bold' : 'text-rose-400'}}" title="停損價">
                   ${{p.is_breakeven ? '🛡️保本' : '停損'}} $${{p.stop}}
@@ -961,7 +1082,7 @@ def render_html(payload):
                 <span>距目標 ${{p.dist_target_pct}}%</span>
               </div>
             </td>
-            <td class="py-3 px-2 max-w-md">
+            <td data-label="理由" class="py-3 px-2 max-w-md td-block">
               <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">${{p.reason}}</p>
               ${{modNote}}
             </td>
@@ -1003,12 +1124,12 @@ def render_html(payload):
         const sideTw = t.side === 'long' ? '做多' : '放空';
         return `
           <tr class="hover:bg-[var(--secondary)]/20 transition align-top">
-            <td class="py-2.5 px-2 font-bold text-[var(--foreground)] uppercase">${{t.agent}}</td>
-            <td class="py-2.5 px-2 font-mono font-bold">${{t.ticker}} <span class="text-xs font-normal text-[var(--muted-foreground)]">(${{sideTw}} ${{t.qty}}股)</span></td>
-            <td class="py-2.5 px-2 text-right font-mono">$${{Number(t.entry).toFixed(2)}} → $${{Number(t.exit).toFixed(2)}}</td>
-            <td class="py-2.5 px-2 text-right font-mono font-bold ${{isWin ? 'text-emerald-500' : 'text-rose-500'}}">${{fmtMoney(t.pnl, true)}}</td>
-            <td class="py-2.5 px-2 text-right font-mono font-bold ${{isWin ? 'text-emerald-500' : 'text-rose-500'}}">${{t.r_multiple != null ? (t.r_multiple >= 0 ? '+' : '') + t.r_multiple + 'R' : '—'}}</td>
-            <td class="py-2.5 px-2 text-xs text-[var(--muted-foreground)] max-w-xs">${{t.exit_reason}}</td>
+            <td class="py-2.5 px-2 font-bold text-[var(--foreground)] uppercase td-head">${{t.agent}}</td>
+            <td data-label="標的 / 方向" class="py-2.5 px-2 font-mono font-bold">${{t.ticker}} <span class="text-xs font-normal text-[var(--muted-foreground)]">(${{sideTw}} ${{t.qty}}股)</span></td>
+            <td data-label="進場 → 出場" class="py-2.5 px-2 text-right font-mono">$${{Number(t.entry).toFixed(2)}} → $${{Number(t.exit).toFixed(2)}}</td>
+            <td data-label="已實現損益" class="py-2.5 px-2 text-right font-mono font-bold ${{isWin ? 'text-emerald-500' : 'text-rose-500'}}">${{fmtMoney(t.pnl, true)}}</td>
+            <td data-label="R 倍數" class="py-2.5 px-2 text-right font-mono font-bold ${{isWin ? 'text-emerald-500' : 'text-rose-500'}}">${{t.r_multiple != null ? (t.r_multiple >= 0 ? '+' : '') + t.r_multiple + 'R' : '—'}}</td>
+            <td data-label="出場原因" class="py-2.5 px-2 text-xs text-[var(--muted-foreground)] max-w-xs">${{t.exit_reason}}</td>
           </tr>
         `;
       }}).join('');
@@ -1211,6 +1332,7 @@ def render_html(payload):
         renderLatestMoves();
         renderStrategy();
         renderEquityCurve();
+        renderRiskCharts();
         setLiveStatus(true, ON_PAGES ? '雲端資料（每 15 分鐘更新）' : 'LIVE 即時連線中');
       }} catch (e) {{
         console.warn('Live API unreachable:', e);
@@ -1275,6 +1397,7 @@ def render_html(payload):
     renderLatestMoves();
     renderStrategy();
     renderEquityCurve();
+    renderRiskCharts();
 
     // 啟動 30 秒輪詢（伺服器盤中 45 秒、休市 10 分鐘才向 Yahoo 抓一次）
     setRefreshInterval(30);
