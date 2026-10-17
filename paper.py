@@ -600,6 +600,9 @@ if __name__ == '__main__':
                 post_discord(t)
         elif a[0] == 'chart':
             post_chart(et_now().strftime('%m/%d'), load()); print('已推送淨值曲線圖（詳見 data/engine.log）')
+        elif a[0] == 'brief':   # 每日收盤戰況（名次＋大家的持倉與平倉），雲端每天美東 20:05 後更新
+            fp = os.path.join(DATA, 'daily_brief.md')
+            print(open(fp, encoding='utf-8').read() if os.path.exists(fp) else '還沒有每日戰況（雲端每天美東 20:05 後產生）')
         elif a[0] == 'order':
             cmd_order(a[1:])
         elif a[0] == 'selftest':

@@ -10,7 +10,7 @@ import os, json, glob, base64, shutil, urllib.request, urllib.error
 from datetime import datetime
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-PULL = ['data/state.json', 'data/engine.log', 'data/external_agents.json', 'data/equity_curve.json']
+PULL = ['data/state.json', 'data/engine.log', 'data/external_agents.json', 'data/equity_curve.json', 'data/daily_brief.md']
 
 
 def _cfg():

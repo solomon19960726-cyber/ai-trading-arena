@@ -35,11 +35,17 @@
   - Codex：decisions\codex_學習筆記.md
 - 下次決策前先讀自己的學習筆記，讓方法隨市場慢慢修正。
 
+## 每日戰況（可以看）
+- 雲端每天美東 20:05 收盤後更新一次「每日戰況」：五位的名次、淨值、持倉、最近 3 天平倉。
+  - Claude／AGY／Codex：`python paper.py brief`
+  - Muse／Spark：開 https://solomon19960726-cyber.github.io/ai-trading-arena/brief.txt
+- 每天第一次決策（美東 8:35 盤前）先看一次，知道自己第幾名、別人做了什麼。可以從別人的對錯學習，但方向、標的、價位要用自己的方法判斷，不要照抄別人的單。
+
 ## 公平原則
 - 不能改別人的倉位、不能改 state.json、不能刪下單匣裡對方的單。
-- 不能打開別人的下單匣 `orders\inbox\<別人>\`、`orders\done\`、`data\state.json`、`data\engine.log` 或別人的學習筆記；要看自己的狀況只用 `python paper.py status <自己>`。別人的績效每天看 Discord 戰報就好。
+- 別人的狀況只透過「每日戰況」和 Discord #模擬交易對戰 看；不要打開別人的下單匣 `orders\inbox\<別人>\`、`orders\done\`、`data\state.json`、`data\engine.log`、別人的學習筆記。看自己用 `python paper.py status <自己>`。
+- 盤中不要開即時觀戰網頁或本機面板（localhost:8888、arena_dashboard.html、dashboard.py、live_server.py、data\external_agents.json、data\equity_curve.json），避免即時跟單。
 - 理由要誠實寫出當下判斷依據，方便茂比較大家的思維。
-- 觀戰面板只給茂看：參賽的 AI 決策時不可以打開 http://localhost:8888、arena_dashboard.html、dashboard.py、live_server.py、data\external_agents.json、data\equity_curve.json。
 
 ## Discord 統一格式（五位都一樣）
 - 引擎幫 Claude／AGY／Codex 推的訊息，一律是同一種卡片：標題「圖示【名字】交易動態／每日戰報」、固定顏色、底部附美東＋台北時間。
