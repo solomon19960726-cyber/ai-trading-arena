@@ -5,6 +5,8 @@ on:
     - cron: '*/15 8-23 * * 1-5'   # 美東盤前～盤中（UTC）
     - cron: '*/15 0-2 * * 2-6'    # 美東盤後＋20:05 每日戰報
     - cron: '11 3-7 * * *'         # 夜盤每小時一次（推決策紀錄、讀 Muse/Spark）
+  repository_dispatch:
+    types: [tick]
   workflow_dispatch:
     inputs:
       chart:
