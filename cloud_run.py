@@ -5,9 +5,10 @@ GitHub Actions 每 15 分鐘跑一次（電腦關機也照跑）：
 2. 讀 Discord #模擬交易對戰 的【Muse】【Spark】推播，更新 data/external_agents.json
 3. 盤中每 30 分鐘記一筆五位淨值（data/equity_curve.json）
 4. 產生線上觀戰網頁 docs/index.html ＋ docs/state.json（GitHub Pages）
+5. 每週五美東 20:05 後第一次執行：推每週戰報到 Discord（data/weekly_report_date.txt 防重複）
 """
 import os, sys, json, time
-from datetime import datetime
+from datetime import datetime, timedelta
 BASE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE)
 import paper, dashboard, live_server
@@ -86,6 +87,91 @@ def build_brief(st, force=False):
     open(mark, 'w', encoding='utf-8').write(today)
 
 
+WEEKLY_MARK = os.path.join(BASE, 'data', 'weekly_report_date.txt')
+
+
+def _curve_dt(t, ref):
+    """equity_curve 的 't' 是「MM/DD HH:MM」沒有年份：用 ref 的年份，跨年時往前一年"""
+    try:
+        d = datetime.strptime(f"{ref.year}/{t}", '%Y/%m/%d %H:%M')
+    except Exception:
+        return None
+    if d.date() > ref + timedelta(days=1):
+        d = d.replace(year=d.year - 1)
+    return d
+
+
+def _week_start_equity(ids, monday, fri):
+    """本週一 00:00（美東）之前最後一筆淨值；比賽在這週才開始的人用起始資金 US$10,000"""
+    out = {a: paper.START_CASH for a in ids}
+    try:
+        st = json.load(open(paper.STATE, encoding='utf-8'))
+        for h in st.get('equity_history', []):
+            if h.get('date', '') < monday.isoformat():
+                out.update({a: float(v) for a, v in h.get('equity', {}).items() if a in out and v is not None})
+    except Exception:
+        pass
+    for p in dashboard.load_curve_all():
+        d = _curve_dt(p.get('t', ''), fri)
+        if d and d.date() < monday:
+            out.update({a: float(v) for a, v in (p.get('equity') or {}).items() if a in out and v is not None})
+    return out
+
+
+def weekly_text(st, fri):
+    """每週戰報內文：名次與淨值變化、本週平倉筆數、勝率、最大單筆獲利／虧損、一句下週提醒"""
+    monday = fri - timedelta(days=4)
+    ags = sorted(st['agents'], key=lambda a: a.get('equity') or 0, reverse=True)
+    start = _week_start_equity([a['id'] for a in ags], monday, fri)
+    medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣']
+    L = [f"**本週 {monday.strftime('%m/%d')}–{fri.strftime('%m/%d')} 名次與淨值變化**"]
+    for i, a in enumerate(ags):
+        eq, s0 = float(a.get('equity') or 0), start.get(a['id'], paper.START_CASH)
+        L.append(f"{medals[i] if i < len(medals) else i + 1} **{a['name']}** ${eq:,.0f}（總報酬 {a.get('ret_pct', 0):+.2f}%）"
+                 f"｜本週 {eq - s0:+,.0f}（{(eq / s0 - 1) * 100 if s0 else 0:+.2f}%）")
+    L += ['', '**本週平倉**']
+    for a in ags:
+        tr = [t for t in a.get('trades') or [] if monday.isoformat() <= str(t.get('closed_at', ''))[:10] <= fri.isoformat()]
+        if not tr:
+            L.append(f"{paper.ICONS.get(a['id'], '')} {a['name']}：本週沒有平倉")
+            continue
+        pnl = [float(t.get('pnl') or 0) for t in tr]
+        best, worst = max(tr, key=lambda t: float(t.get('pnl') or 0)), min(tr, key=lambda t: float(t.get('pnl') or 0))
+        bp, wp = float(best.get('pnl') or 0), float(worst.get('pnl') or 0)
+        best_s = f"{best.get('ticker')} {bp:+,.2f}" if bp > 0 else '—'
+        worst_s = f"{worst.get('ticker')} {wp:+,.2f}" if wp < 0 else '—'
+        L.append(f"{paper.ICONS.get(a['id'], '')} {a['name']}：{len(tr)} 筆｜勝率 {sum(1 for v in pnl if v > 0) / len(tr) * 100:.0f}%"
+                 f"｜最大獲利 {best_s}｜最大虧損 {worst_s}"
+                 f"｜合計 {sum(pnl):+,.2f}")
+    held = sum(len(a.get('positions') or []) for a in ags)
+    gap = float(ags[0].get('equity') or 0) - float(ags[-1].get('equity') or 0)
+    tip = (f"{held} 檔部位留倉過週末，週一 4:00 盤前跳空越過停損會用開盤價成交，開盤前先確認停損位置；"
+           if held else '大家都空手過週末，週一盤前先看大盤方向再找進場點；')
+    L += ['', f"📌 下週提醒：{tip}目前第一名 {ags[0]['name']} 領先最後一名 {ags[-1]['name']} ${gap:,.0f}。",
+          '*Muse、Spark 為自行記帳，以它們最近一次在頻道回報為準。*']
+    return '\n'.join(L)
+
+
+def weekly_report(st):
+    """每週五美東 20:05 之後第一次執行時推一則每週戰報到 Discord；data/weekly_report_date.txt 記住推過的那個週五"""
+    n = dashboard.et_now()
+    back = (n.weekday() - 4) % 7
+    if back == 0 and n.hour * 60 + n.minute < 20 * 60 + 5:
+        back = 7
+    fri = (n - timedelta(days=back)).date()
+    try:
+        done = open(WEEKLY_MARK, encoding='utf-8').read().strip()
+    except Exception:
+        done = ''
+    if done >= fri.isoformat():
+        return
+    text = weekly_text(st, fri)
+    print(text + '\n')
+    if paper.post_discord(text, agent='arena', title=f"每週戰報 {(fri - timedelta(days=4)).strftime('%m/%d')}–{fri.strftime('%m/%d')}"):
+        open(WEEKLY_MARK, 'w', encoding='utf-8').write(fri.isoformat())
+        paper.log(f'已推送每週戰報（{fri.isoformat()} 當週）')
+
+
 def dashboard_name(a):
     return {'claude': 'Claude', 'agy': 'AGY', 'codex': 'Codex', 'muse': 'Muse', 'spark': 'Spark'}.get(a, a or '?')
 
@@ -99,6 +185,11 @@ def build_pages():
     open(os.path.join(DOCS, 'index.html'), 'w', encoding='utf-8').write(dashboard.render_html(st))
     open(os.path.join(DOCS, '.nojekyll'), 'w').close()
     build_brief(st, force='brief' in sys.argv)
+    if 'weekly-preview' in sys.argv:   # 只印出每週戰報內容，不推送、不寫標記
+        n = dashboard.et_now()
+        print(weekly_text(st, (n - timedelta(days=(n.weekday() - 4) % 7)).date()))
+    else:
+        step('每週戰報', lambda: weekly_report(st))
 
 
 if __name__ == '__main__':

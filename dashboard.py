@@ -251,6 +251,13 @@ def strategy_stats(a, state, ext):
     }
 
 
+def load_curve_all():
+    try:
+        return json.load(open(CURVE_FILE, encoding='utf-8'))
+    except Exception:
+        return []
+
+
 def load_curve():
     try:
         return json.load(open(CURVE_FILE, encoding='utf-8'))[-400:]

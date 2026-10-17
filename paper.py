@@ -414,8 +414,9 @@ def ensure_codex_once_per_boot():
         log(f'自動打開 Codex 失敗：{e}')
 
 
-COLORS = {'claude': 0x10b981, 'agy': 0x38bdf8, 'codex': 0xf59e0b, 'spark': 0xa855f7, 'muse': 0xec4899}
-ICONS = {'claude': '🟢', 'agy': '🔵', 'codex': '🟠', 'spark': '🟣', 'muse': '🩷'}
+COLORS = {'claude': 0x10b981, 'agy': 0x38bdf8, 'codex': 0xf59e0b, 'spark': 0xa855f7, 'muse': 0xec4899, 'arena': 0x6366f1}
+ICONS = {'claude': '🟢', 'agy': '🔵', 'codex': '🟠', 'spark': '🟣', 'muse': '🩷', 'arena': '📅'}
+NAMES.setdefault('arena', '模擬交易戰報')   # 五位合併的卡片（每週戰報），不是參賽者
 
 
 def post_discord(text, username='模擬交易戰報', agent=None, title=None):
