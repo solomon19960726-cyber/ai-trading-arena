@@ -1,0 +1,11 @@
+# 機密：絕對不能上傳
+discord_bot.txt
+paper_webhook.txt
+github_token.txt
+*webhook*.txt
+*.token
+# 本機專用
+__pycache__/
+data/boot_launch.json
+data/bridge.log
+orders/sent/
