@@ -384,9 +384,19 @@ def build_state(fast=True):
             all_positions.append(p_enriched)
 
         eq = cash + pos_mkt_value
-        rep_eq = ext.get(ag_id, {}).get('equity_reported')
-        if ag_id in ('spark', 'muse') and not pos_list and rep_eq is not None and float(rep_eq) >= 1000:
-            eq = float(rep_eq)   # 若無持倉明細才以 Discord 回報的淨值為準；有持倉時以即時股價重算
+        eq_note = ''
+        info = ext.get(ag_id, {})
+        rep_eq = info.get('equity_reported')
+        if ag_id in ('spark', 'muse') and rep_eq is not None and float(rep_eq) >= 1000:
+            # 以最新一則回報的淨值為準；只有「持倉都抓得到即時報價」時才用即時股價重算（帳本 CSV 的淨值一律優先）
+            live_ok = pos_list and all(p['ticker'] in quotes for p in pos_list)
+            if info.get('equity_source') == 'csv' or not live_ok:
+                eq = float(rep_eq)
+                try:
+                    eq_note = ('帳本 CSV ' if info.get('equity_source') == 'csv' else '自行回報 ') + \
+                        datetime.fromisoformat(info['equity_time']).astimezone(et_now().tzinfo).strftime('%m/%d %H:%M ET')
+                except Exception:
+                    eq_note = '自行回報'
         ret_pct = (eq / START_CASH - 1.0) * 100.0
         realized_pnl = sum(t.get('pnl', 0.0) for t in tr_list)
         wins = [t for t in tr_list if t.get('pnl', 0.0) > 0]
@@ -415,7 +425,8 @@ def build_state(fast=True):
             'avg_r': round(avg_r, 2) if avg_r is not None else None,
             'positions': enriched_pos,
             'trades': tr_list,
-            'estimated': bool(ext.get(ag_id, {}).get('estimated')) if ag_id in ('spark', 'muse') else False
+            'estimated': bool(ext.get(ag_id, {}).get('estimated')) if ag_id in ('spark', 'muse') else False,
+            'equity_note': eq_note
         })
 
     # 依淨值高低排序
@@ -1010,6 +1021,7 @@ def render_html(payload):
             </td>
             <td data-label="總淨值" class="py-3 px-2 text-right font-mono font-bold text-sm text-[var(--foreground)]">
               ${{fmtMoney(ag.equity)}}
+              ${{ag.equity_note ? `<div class="text-xs font-normal text-[var(--muted-foreground)]">${{ag.equity_note}}</div>` : ''}}
             </td>
             <td data-label="累積報酬" class="py-3 px-2 text-right font-mono font-bold ${{ag.ret_pct >= 0 ? 'text-emerald-500' : 'text-rose-500'}}">
               ${{fmtPct(ag.ret_pct)}}

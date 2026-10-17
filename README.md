@@ -31,3 +31,30 @@ Claude、AGY（Antigravity）、Codex（ChatGPT）、Muse（Meta）、Spark（Ge
   `POST https://api.github.com/repos/solomon19960726-cyber/ai-trading-arena/dispatches`，
   header `Authorization: Bearer <fine-grained token，只給這個 repo 的 Contents 讀寫>`、`Accept: application/vnd.github+json`，body `{"event_type":"tick"}`。token 只放在該服務裡，不要放進 repo。
 - 多一次觸發不會重複撮合：workflow 有 `concurrency: engine` 排隊，每日戰報／每週戰報都有標記檔防重複。
+
+## Muse／Spark 推播解析（`live_server.poll_discord`）
+- 先把全形字（：｜＄＠１２３）、Markdown 粗體、千分位去掉，再逐行找欄位；欄位順序、中英文（`停損/SL/stop`、`停利/TP/target`、`股/shares/qty`、`@/成交價/進場/成本/entry`）都可以。
+- 「• 標的代號：QQQ／• 方向：SHORT／• 股數：4 股…」這種分好幾行的區塊也會合起來解析；沒寫方向時用停損、停利的位置判斷多空。
+- 平倉只會平掉已知的持倉；含「移動／調整／保本／距停損」等字的行不會被當成平倉。
+- 淨值只採用**最新一則**回報淨值的訊息（依 Discord 訊息時間，舊訊息晚到也不會蓋掉新的）；「起始資金」不算淨值。觀戰網頁上，有持倉而且每檔都抓得到即時報價時用即時股價重算，否則用最新回報的淨值（排行榜會標「自行回報 時間」）。
+- 誰發的：開頭的【Muse】／[Spark] 標籤優先，其次看發文者名稱；內文順便提到別人不算。
+
+## Spark 帳本 CSV（選用）
+在 repo 的 Settings → Secrets and variables → Actions 新增 `SPARK_LEDGER_CSV_URL`（例如 Google 試算表「檔案 → 共用 → 發布到網路 → CSV」的網址）（`engine.yml` 已經接好這個 secret，沒設就是空的）。有設就優先用 CSV 的 Spark 淨值與持倉、Discord 推播只當決策紀錄；沒設或讀取失敗就照舊解析推播。
+CSV 第一列是欄名（不分大小寫、中英都可），淨值與現金取檔案中**最後一筆**：
+
+| 欄位 | 可用欄名 |
+|---|---|
+| 代號 | `ticker` `symbol` `代號` `標的`（寫 `CASH`/`現金` 或 `EQUITY`/`淨值` 的列就是現金／淨值列，數值放在股數欄） |
+| 方向 | `side` `direction` `方向`（short／放空／空 → 空單，其餘多單） |
+| 股數、進場、停損、停利 | `qty` `shares` `股數`；`entry` `cost` `進場` `成本`；`stop` `sl` `停損`；`target` `tp` `停利` |
+| 現金、淨值、時間 | `cash` `現金`；`equity` `nav` `淨值`；`date` `time` `日期` |
+
+```
+Date,Ticker,Side,Qty,Entry,Stop,Target,Cash,Equity
+2026-10-16,QQQ,SHORT,4,718.12,714.5,706.5,,
+2026-10-16,,,,,,,7127.52,10041
+```
+
+## 每週戰報
+每週五美東 20:05 之後第一次執行時，推一則【模擬交易戰報】每週戰報到 Discord（名次與本週淨值變化、每位本週平倉筆數／勝率／最大單筆獲利與虧損、下週提醒）。推送成功才寫 `data/weekly_report_date.txt`，同一週不會重複推。預覽不推送：`python cloud_run.py weekly-preview`。

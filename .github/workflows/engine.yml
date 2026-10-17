@@ -38,6 +38,7 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
+          SPARK_LEDGER_CSV_URL: ${{ secrets.SPARK_LEDGER_CSV_URL }}   # 選用：沒設就是空字串，照舊解析 Discord
         run: python cloud_run.py ${{ inputs.chart && 'chart' || '' }}
       - name: 把結果存回 repo
         run: |

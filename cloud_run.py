@@ -194,6 +194,7 @@ def build_pages():
 
 if __name__ == '__main__':
     step('撮合', paper.cmd_run)
+    step('Spark 帳本 CSV', live_server.sync_spark_ledger)   # 有設 SPARK_LEDGER_CSV_URL 才會讀
     step('同步 Muse／Spark', live_server.poll_discord)
     step('觀戰網頁', build_pages)
     if 'chart' in sys.argv:
