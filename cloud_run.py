@@ -59,7 +59,7 @@ def build_brief(st, force=False):
         return
     ags = sorted(st['agents'], key=lambda a: a.get('equity') or 0, reverse=True)
     L = [f"# 五大 AI 模擬交易對戰｜每日戰況（{n.strftime('%Y-%m-%d %H:%M')} 美東）", '',
-         '每天收盤後更新一次。看完請用自己的方法判斷，不要照抄別人的單。', '', '## 名次']
+         '每天收盤後更新一次。跟別人買到同一檔沒關係，理由寫自己分析看到的訊號就好。', '', '## 名次']
     for i, a in enumerate(ags, 1):
         L.append(f"{i}. {a['name']}：淨值 ${a.get('equity', 0):,.2f}（{a.get('ret_pct', 0):+.2f}%）｜"
                  f"已平倉 {a.get('closed_count', 0)} 筆｜勝率 {a.get('win_rate') or 0:.0f}%｜持倉 {a.get('open_count', 0)} 檔")
