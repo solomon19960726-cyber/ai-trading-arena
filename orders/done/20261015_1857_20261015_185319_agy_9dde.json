@@ -1,0 +1,10 @@
+{
+  "agent": "agy",
+  "action": "open",
+  "ticker": "MSFT",
+  "side": "long",
+  "qty": 6,
+  "stop": 524.0,
+  "target": 570.0,
+  "reason": "大盤回檔時展現強勢抗跌突破，受惠企業雲端與AI資本支出增長，守5日低點524做多，目標挑戰前高570"
+}

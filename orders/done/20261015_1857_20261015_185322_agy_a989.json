@@ -1,0 +1,10 @@
+{
+  "agent": "agy",
+  "action": "open",
+  "ticker": "NVDA",
+  "side": "long",
+  "qty": 15,
+  "stop": 209.0,
+  "target": 235.0,
+  "reason": "半導體因ASML雜音與公債殖利率急殺超跌，212下影線測試有撐，AI基本面無虞，守209跌破停損，目標反彈回20MA及前波高點235"
+}
