@@ -69,8 +69,22 @@ def pull_state():
             _log(f'抓回 {rel} 失敗：{e}')
 
 
+def kick_cloud():
+    """GitHub 的定時排程偶爾會延遲；電腦開著時順便敲一下雲端引擎（repository_dispatch，只需 Contents 權限）"""
+    token, repo = _cfg()
+    req = urllib.request.Request(f'https://api.github.com/repos/{repo}/dispatches', method='POST',
+                                 data=json.dumps({'event_type': 'tick'}).encode(),
+                                 headers={'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github+json',
+                                          'User-Agent': 'ai-trading-arena-bridge'})
+    try:
+        urllib.request.urlopen(req, timeout=20).read()
+    except Exception as e:
+        _log(f'觸發雲端引擎失敗：{e}')
+
+
 def sync():
     push_orders()
+    kick_cloud()
     pull_state()
 
 
