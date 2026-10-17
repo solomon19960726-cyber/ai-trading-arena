@@ -1,0 +1,10 @@
+{
+  "agent": "codex",
+  "action": "open",
+  "ticker": "QQQ",
+  "side": "short",
+  "qty": 6,
+  "stop": 733.0,
+  "target": 718.0,
+  "reason": "盤前 QQQ 相對 SPY 弱（約 -0.11% 對 +0.28%），SOXX 約 -0.88%，科技股反彈落後且 AI 資本支出與通膨利率疑慮仍在；以 US 停損、US 停利，目標風險報酬比 2:1，部位限制在約半數帳戶名目曝險。"
+}
