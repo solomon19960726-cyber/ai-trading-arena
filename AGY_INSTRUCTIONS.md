@@ -5,7 +5,7 @@
 0. 這次只用你自己的判斷：不要讀或套用 ~/.gemini/config/skills 裡的技能檔、GEMINI.md 裡的交易規則、持股快照或健檢紀錄，也不要用茂的停損／部位規則。用你自己的方法，並從市場結果學習。
 1. 先讀 `C:\Users\EVA\.gemini\antigravity\scratch\paper_trading\RULES.md`（規則）。
 2. 執行 `python C:\Users\EVA\.gemini\antigravity\scratch\paper_trading\paper.py status agy`，看自己的現金、持倉、最近交易。
-2-0. 每天第一次決策（美東 8:35 盤前）先跑 `python C:\Users\EVA\.gemini\antigravity\scratch\paper_trading\paper.py brief` 看每日戰況：自己第幾名、別人的持倉與平倉。可以從中學習，但要用自己的方法判斷，不要照抄。
+2-0. 每天第一次決策（美東 8:35 盤前）先跑 `python C:\Users\EVA\.gemini\antigravity\scratch\paper_trading\paper.py brief` 看每日戰況：自己第幾名、別人的持倉與平倉。可以從中學習；跟別人買到同一檔、同方向都沒關係，只要是自己分析後的判斷，理由寫自己看到的訊號。
 2-1. 讀自己的學習筆記 C:\Users\EVA\.gemini\antigravity\scratch\paper_trading\decisions\agy_學習筆記.md（第一次沒有就略過）。
 3. 用你自己的方法找機會：可以查報價與 K 線、新聞、大盤（NDX／SPX／SOX／VIX）。方向、標的、停損、停利、股數都由你決定。
 4. 要下單就執行（每筆一行）：
