@@ -1,0 +1,49 @@
+name: 撮合引擎（雲端）
+
+on:
+  schedule:
+    - cron: '*/15 8-23 * * 1-5'   # 美東盤前～盤中（UTC）
+    - cron: '*/15 0-2 * * 2-6'    # 美東盤後＋20:05 每日戰報
+    - cron: '7 3-7 * * *'         # 夜盤每小時一次（推決策紀錄、讀 Muse/Spark）
+  workflow_dispatch:
+    inputs:
+      chart:
+        description: '順便推一張淨值曲線圖到 Discord'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: engine
+  cancel-in-progress: false
+
+jobs:
+  run:
+    if: vars.ENGINE == 'cloud' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 撮合＋同步＋產生觀戰網頁
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
+        run: python cloud_run.py ${{ inputs.chart && 'chart' || '' }}
+      - name: 把結果存回 repo
+        run: |
+          git config user.name "arena-engine"
+          git config user.email "arena-engine@users.noreply.github.com"
+          git add -A data orders docs
+          git diff --cached --quiet && exit 0
+          git commit -m "引擎 $(TZ=America/New_York date '+%m/%d %H:%M') ET" -q
+          for i in 1 2 3 4 5; do
+            git pull --rebase -q -X theirs && git push -q && exit 0
+            sleep 5
+          done
+          exit 1
