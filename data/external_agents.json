@@ -56,7 +56,10 @@
     ],
     "equity_reported": 9977.32,
     "equity_time": "2026-10-19T13:57:33.610000-04:00",
-    "equity_source": "discord"
+    "equity_source": "discord",
+    "corrections_applied": [
+      "2026-10-19-spark-qqq-entry"
+    ]
   },
   "muse": {
     "name": "Muse (Meta)",
