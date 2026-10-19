@@ -201,6 +201,7 @@ if __name__ == '__main__':
     step('撮合', paper.cmd_run)
     step('Spark 帳本 CSV', live_server.sync_spark_ledger)   # 有設 SPARK_LEDGER_CSV_URL 才會讀
     step('同步 Muse／Spark', live_server.poll_discord)
+    step('人工修正', lambda: live_server.apply_corrections(log=paper.log))   # data/ext_corrections.json，每筆只套用一次
     step('觀戰網頁', build_pages)
     if 'chart' in sys.argv:
         step('淨值曲線圖', lambda: paper.post_chart(paper.et_now().strftime('%m/%d'), paper.load()))

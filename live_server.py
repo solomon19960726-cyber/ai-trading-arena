@@ -92,7 +92,10 @@ NUM = r'(?:US)?\$?\s*(\d+(?:\.\d+)?)'
 KEY_TICKER_RE = re.compile(r'(?i:成交|開倉|建倉|買進|買入|加碼|做多|放空|做空|代號|標的(?:代號)?|ticker|symbol)\s*[:|]?\s*\$?' + TICKER)
 BLOCK_RE = re.compile(r'(?i:標的代號|代號|標的|ticker|symbol)\s*:\s*' + TICKER)
 QTY_RE = re.compile(r'(\d+)\s*(?:股|(?i:shares?|sh)(?![A-Za-z]))|(?i:股數|數量|qty|shares)\s*[:|]?\s*(\d+)')
-PRICE_RE = re.compile(r'@\s*\$?\s*(\d+(?:\.\d+)?)|(?i:成交價|進場價?|開倉價格?|買入價|成本價?|均價|entry)\s*[:|]?\s*' + NUM)
+# 每股價格依優先順序找：@價格、成交價（格）／進場價、最後才是成本／均價；「買進金額、成本 US$2,889」這類總額不算（前面是 買進／扣除／總）
+PRICE_RES = [re.compile(r'@\s*\$?\s*(\d+(?:\.\d+)?)'),
+             re.compile(r'(?i:成交價格?|成交均價|進場(?:價格?)?|開倉價格?|買入價格?|entry(?:\s*price)?)\s*[:|]?\s*' + NUM),
+             re.compile(r'(?<![買進扣除總入])(?:成本價?|均價)\s*[:|]?\s*' + NUM)]
 STOP_RE = re.compile(r'(?i:停損價?|止損價?|stop(?:\s*loss)?|SL)\s*(?:\(SL\))?\s*[:|]?\s*' + NUM)
 TARGET_RE = re.compile(r'(?i:停利價?|止盈價?|目標價?|take\s*profit|target|TP)\s*(?:\(TP\))?\s*[:|]?\s*' + NUM)
 SHORT_RE = re.compile(r'(?i:放空|做空|空單|賣空|short)')
@@ -137,7 +140,8 @@ def parse_position(chunk, tk=None):
     if not tk:
         m = KEY_TICKER_RE.search(chunk)
         tk = m.group(1) if m and m.group(1) not in NOT_TICKER else next(iter(_tickers(chunk)), None)
-    qty, px, stop, tgt = _first(QTY_RE, chunk), _first(PRICE_RE, chunk), _first(STOP_RE, chunk), _first(TARGET_RE, chunk)
+    qty, stop, tgt = _first(QTY_RE, chunk), _first(STOP_RE, chunk), _first(TARGET_RE, chunk)
+    px = next((v for v in (_first(rx, chunk) for rx in PRICE_RES) if v), None)
     if not (tk and qty and px and stop and tgt):
         return None
     qty, px, stop, tgt = int(qty), float(px), float(stop), float(tgt)
@@ -238,6 +242,41 @@ def sync_message(agent, text, msg_time=None):
         info['equity_source'] = 'discord'
         done.append('淨值')
     json.dump(ext, open(EXT_FILE, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
+    return done
+
+
+# ---------- 人工修正（解析器抓錯時用；每筆要有原因，經 PR 審閱合併後才生效）----------
+CORR_FILE = os.path.join(BASE_DIR, 'data', 'ext_corrections.json')
+
+
+def apply_corrections(log=print):
+    """套用 data/ext_corrections.json：依倉位 id 改指定欄位（持倉或已平倉都找），每筆只套用一次；找不到就略過"""
+    try:
+        items = json.load(open(CORR_FILE, encoding='utf-8')).get('corrections') or []
+    except Exception:
+        return []
+    if not items or not os.path.exists(EXT_FILE):
+        return []
+    ext = json.load(open(EXT_FILE, encoding='utf-8'))
+    done = []
+    for c in items:
+        info = ext.get(c.get('agent'))
+        if not info or c.get('id') in info.get('corrections_applied', []):
+            continue
+        rec = next((x for x in info.get('positions', []) + info.get('trades', []) if x.get('id') == c.get('position_id')), None)
+        if not rec:
+            log(f"[修正] {c.get('id')}：找不到倉位 {c.get('position_id')}，略過")
+            continue
+        rec.update(c.get('set') or {})
+        if 'exit' in rec and 'set' in c:   # 已平倉：損益與 R 跟著重算
+            pnl = (rec['exit'] - rec['entry']) * rec['qty'] * (1 if rec['side'] == 'long' else -1)
+            risk = abs(rec['entry'] - rec.get('stop0', rec['stop'])) * rec['qty']
+            rec['pnl'], rec['r_multiple'] = round(pnl, 2), (round(pnl / risk, 2) if risk else None)
+        info.setdefault('corrections_applied', []).append(c['id'])
+        done.append(c['id'])
+        log(f"[修正] 已套用 {c['id']}：{c.get('reason', '')}")
+    if done:
+        json.dump(ext, open(EXT_FILE, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
     return done
 
 
@@ -472,6 +511,7 @@ def discord_loop():
     while True:
         sync_spark_ledger()
         poll_discord()
+        apply_corrections()
         time.sleep(120)
 
 
