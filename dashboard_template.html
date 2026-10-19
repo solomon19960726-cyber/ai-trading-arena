@@ -150,6 +150,17 @@
   .hot { display: flex; flex-wrap: wrap; gap: 6px; }
   .hot > span { font-size: 12px; padding: 4px 10px; border-radius: 10px; background: var(--card-2); border: 1px solid var(--line); }
   .hot b { margin-right: 4px; }
+  .pools { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+  .pool { border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: var(--card-2); border-top: 3px solid; min-width: 0; }
+  .pool .hd { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .pool .cnt { font-size: 12px; color: var(--text-3); }
+  .pool h4 { margin: 12px 0 6px; font-size: 12px; color: var(--text-3); font-weight: 700; }
+  .tk-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 2px 8px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--card); margin: 0 4px 4px 0; }
+  .tk-chip.traded { border-color: var(--text-2); font-weight: 700; }
+  .tk-chip small { color: var(--text-3); font-weight: 400; }
+  .ovl { display: grid; gap: 3px; font-size: 12px; }
+  .ovl div { padding: 8px 4px; text-align: center; border-radius: 6px; }
+  .ovl .h { color: var(--text-3); font-weight: 700; }
   .badge { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--card); border: 1px solid var(--line-2); color: var(--text-2); }
 
   /* filters */
@@ -278,6 +289,7 @@
     <button class="tab" role="tab" data-tab="overview">總覽</button>
     <button class="tab" role="tab" data-tab="positions">持倉</button>
     <button class="tab" role="tab" data-tab="analytics">績效分析</button>
+    <button class="tab" role="tab" data-tab="pools">選股池</button>
     <button class="tab" role="tab" data-tab="trades">交易紀錄</button>
     <button class="tab" role="tab" data-tab="feed">Discord 與筆記</button>
   </div>
@@ -365,6 +377,32 @@
       <h2>策略對照</h2>
       <p class="desc">平均風險＝每筆停損距離 × 股數 ÷ 起始資金。</p>
       <div class="tbl-wrap"><table class="rt" id="strategy"></table></div>
+    </div>
+  </section>
+
+  <section data-panel="pools" hidden>
+    <div class="card">
+      <h2>每人的選股池</h2>
+      <p class="desc">觀察名單取自決策紀錄裡的「觀察：」那一行；還沒寫觀察名單的，先用平常提到過的標的代替（標示「推估」）。</p>
+      <div class="pools" id="pools"></div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h2>彼此重疊度</h2>
+        <p class="desc">兩人選股池（觀察＋交易）的交集 ÷ 聯集；越高代表看的東西越像。</p>
+        <div id="overlap"></div>
+      </div>
+      <div class="card">
+        <h2>大家都在看的</h2>
+        <p class="desc">出現在兩人以上選股池的標的。</p>
+        <div id="common"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>族群熱度（每日收盤後更新）</h2>
+      <p class="desc" id="heat-desc">茂的 14 個族群；20 日相對 SPY 50%、5 日相對 SPY 30%、量能 20%，滿分 100。只是參考，選股不限於表內。</p>
+      <div class="tbl-wrap"><table class="rt" id="heat"></table></div>
+      <div id="hot" style="margin-top:12px"></div>
     </div>
   </section>
 
@@ -750,8 +788,55 @@ function renderDigest() {
     <div class="dg-sec"><h3>最多人討論的標的</h3>${hot}</div>`;
 }
 
+/* ---------- 選股池 ---------- */
+const GROUP_SHADES = ['var(--text-2)', 'var(--text-3)', 'var(--line-2)', 'var(--line)'];
+function renderPools() {
+  const P = STATE.pools;
+  if (!P) { $('pools').innerHTML = '<div class="empty">資料累積中</div>'; return; }
+  $('pools').innerHTML = STATE.agents.map(a => {
+    const p = P.agents[a.id] || {};
+    const traded = new Set(p.traded || []);
+    const list = p.has_watch ? p.watch.map(([tk, n, v]) => ({ tk, n, v })) : (p.mentioned || []).map(([tk, n]) => ({ tk, n, v: '' }));
+    const chips = list.slice(0, 24).map(x => `<span class="tk-chip${traded.has(x.tk) ? ' traded' : ''}" title="${esc(x.v || '')}">${esc(x.tk)}<small>×${x.n}</small></span>`).join('') || '<span class="muted" style="font-size:12px">還沒有</span>';
+    const tchips = [...traded].map(tk => `<span class="tk-chip traded">${esc(tk)}</span>`).join('') || '<span class="muted" style="font-size:12px">還沒交易</span>';
+    const tot = (p.groups || []).reduce((s, g) => s + g[1], 0) || 1;
+    const bar = (p.groups || []).map(([g, n], i) => `<div class="seg" style="width:${n / tot * 100}%;background:${i === 0 ? col(a.id) : GROUP_SHADES[Math.min(i - 1, 3)]}" title="${esc(g)} ${n} 檔"></div>`).join('');
+    const legend = (p.groups || []).slice(0, 6).map(([g, n]) => `${esc(g)} ${n}`).join('・');
+    const latest = p.has_watch ? p.watch.filter(x => x[2]).slice(0, 3).map(([tk, , v]) => `<div style="font-size:12px;color:var(--text-2);margin-top:2px"><b>${esc(tk)}</b> ${esc(v)}</div>`).join('') : '';
+    return `<div class="pool" style="border-top-color:${col(a.id)}">
+      <div class="hd"><b style="font-size:15px">${esc(a.name)}</b><span class="cnt">${p.size || 0} 檔・${(p.groups || []).length} 個族群${p.has_watch ? '' : '・推估'}</span></div>
+      <h4>${p.has_watch ? '觀察名單（×出現次數；粗框＝有交易）' : '提到過的標的（尚未寫觀察名單）'}</h4><div>${chips}</div>${latest}
+      <h4>交易過</h4><div>${tchips}</div>
+      <h4>族群分布</h4><div class="track">${bar}</div><div class="muted" style="font-size:11.5px;margin-top:4px">${legend || '—'}</div>
+    </div>`;
+  }).join('');
+  const ids = STATE.agents.map(a => a.id);
+  $('overlap').innerHTML = `<div class="ovl" style="grid-template-columns:70px repeat(${ids.length},minmax(0,1fr))"><div></div>${ids.map(i => `<div class="h">${esc(NAME[i])}</div>`).join('')}` +
+    ids.map(r => `<div class="h" style="text-align:left">${sw(r)}${esc(NAME[r])}</div>` + ids.map(c => {
+      if (r === c) return '<div class="muted">—</div>';
+      const v = (P.overlap[r] || {})[c] || 0;
+      return `<div class="num" style="background:color-mix(in srgb, var(--accent) ${Math.round(v * 0.8)}%, var(--card-2))" title="${NAME[r]} × ${NAME[c]}：${v}%">${v}%</div>`;
+    }).join('')).join('') + '</div>';
+  $('common').innerHTML = (P.common || []).length ? (P.common || []).map(([tk, who]) => `<div class="bar"><div class="lb"><b class="num">${esc(tk)}</b><span>${who.map(w => sw(w) + esc(NAME[w])).join('　')}</span></div>
+      <div class="track">${who.map(w => `<div class="seg" style="width:${100 / ids.length}%;background:${col(w)}"></div>`).join('')}</div></div>`).join('') : '<div class="empty">還沒有重疊的標的</div>';
+  const sc = STATE.scan;
+  if (!sc || !(sc.themes || []).length) { $('heat').innerHTML = '<tbody><tr><td class="empty" style="text-align:center">今天收盤後會產生第一份掃描</td></tr></tbody>'; $('hot').innerHTML = ''; return; }
+  $('heat-desc').textContent = `${sc.date} 收盤後；茂的 14 個族群，20 日相對 SPY 50%、5 日相對 SPY 30%、量能 20%，滿分 100。只是參考，選股不限於表內。`;
+  const tr = { '升溫': '<span class="up">▲ 升溫</span>', '降溫': '<span class="down">▼ 降溫</span>', '持平': '<span class="muted">持平</span>', '—': '<span class="muted">首次</span>' };
+  $('heat').innerHTML = `<thead><tr><th>#</th><th class="l">族群</th><th>分數</th><th>趨勢</th><th>20 日相對</th><th>5 日相對</th><th>量能</th><th class="l">今日領漲</th></tr></thead><tbody>` +
+    sc.themes.map(([g, r], i) => `<tr><td class="num">${i + 1}</td><td data-label="族群" class="l"><b>${esc(g)}</b></td>
+      <td data-label="分數" class="num"><b>${r.score ?? '—'}</b></td><td data-label="趨勢">${tr[r.trend] || ''}${r.delta != null ? ` <span class="muted num">${r.delta > 0 ? '+' : ''}${r.delta}</span>` : ''}</td>
+      <td data-label="20 日相對" class="num ${tone(r.rel20)}">${pct(r.rel20, true, 1)}</td><td data-label="5 日相對" class="num ${tone(r.rel5)}">${pct(r.rel5, true, 1)}</td>
+      <td data-label="量能" class="num">${r.vol != null ? r.vol.toFixed(2) + ' 倍' : '—'}</td>
+      <td data-label="今日領漲" class="l num">${(r.leaders || []).map(([t, x]) => `${esc(t)} <span class="${tone(x)}">${x > 0 ? '+' : ''}${x}%</span>`).join('、')}</td></tr>`).join('') + '</tbody>';
+  const hot = Object.entries(sc.hot || {}).sort((a, b) => (b[1].rel20 || 0) - (a[1].rel20 || 0));
+  $('hot').innerHTML = `<div style="font-size:12px;color:var(--text-3);margin-bottom:6px">新熱點（族群表外，20 日相對前 10 且量能放大）</div>` +
+    (hot.length ? hot.map(([t, h]) => `<span class="tk-chip">${esc(t)}<small>${pct(h.rel20, true, 1)}・量 ${(h.vol || 0).toFixed(1)} 倍</small></span>`).join('') : '<span class="muted" style="font-size:12px">目前沒有</span>') +
+    `<div style="margin-top:8px;font-size:12px"><a href="./scan.txt" style="color:var(--accent)">看完整市場掃描（產業 ETF、漲跌幅、52 週新高、財報）→</a></div>`;
+}
+
 /* ---------- 分頁 ---------- */
-const TABS = ['overview', 'positions', 'analytics', 'trades', 'feed'];
+const TABS = ['overview', 'positions', 'analytics', 'pools', 'trades', 'feed'];
 let tab = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : (store.get('arena-tab') || 'overview');
 function setTab(t) {
   tab = TABS.includes(t) ? t : 'overview';
@@ -772,8 +857,8 @@ function wrapCells(id) {
 
 function renderAll() {
   renderHeader(); renderKPIs(); renderBoard(); renderMoves(); renderPositions();
-  renderMetrics(); renderTrades(); renderNotes(); renderEvents(); renderCharts();
-  ['metrics', 'strategy', 'trades'].forEach(wrapCells);
+  renderMetrics(); renderPools(); renderTrades(); renderNotes(); renderEvents(); renderCharts();
+  ['metrics', 'strategy', 'trades', 'heat'].forEach(wrapCells);
 }
 
 /* ---------- 深淺色 ---------- */
