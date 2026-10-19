@@ -11,9 +11,10 @@
   python paper.py order agent open TICKER long|short QTY STOP TARGET 理由...
   python paper.py order agent close POSITION_ID 理由...
   python paper.py order agent modify POSITION_ID STOP TARGET 理由...
+  python paper.py scan                印出每日市場掃描（產業 ETF、族群熱度、新熱點、財報；雲端每天收盤後更新）
   python paper.py selftest            測試報價與寫檔（不下單）
 """
-import json, os, sys, time, uuid, glob, shutil, urllib.request, urllib.error
+import json, os, re, sys, time, uuid, glob, shutil, urllib.request, urllib.error
 from datetime import datetime, timedelta, timezone
 
 for _st in (sys.stdout, sys.stderr):
@@ -229,6 +230,7 @@ def handle_order(s, o):
         event(agent, f"✅ 成交 {tk} {'做多' if side=='long' else '放空'} {qty}股 @{price:.2f}｜停損 {stop}｜停利 {target}｜風險 ${abs(price-stop)*qty:,.0f}\n　理由：{p['reason']}")
     elif act == 'note':
         txt = str(o.get('text') or o.get('reason') or '').strip()[:1500]
+        txt = re.sub(r'(?:\s*[；;|｜]\s*|\s+)(觀察\s*[:：])', r'\n\1', txt).strip()   # 「觀察：…」一律自成一行（命令列寫在同一行也一樣）
         if txt:
             event(agent, '📝 決策\n' + txt)
             log(f"{agent} 決策紀錄：{txt[:80]}")
@@ -604,6 +606,9 @@ if __name__ == '__main__':
         elif a[0] == 'brief':   # 每日收盤戰況（名次＋大家的持倉與平倉），雲端每天美東 20:05 後更新
             fp = os.path.join(DATA, 'daily_brief.md')
             print(open(fp, encoding='utf-8').read() if os.path.exists(fp) else '還沒有每日戰況（雲端每天美東 20:05 後產生）')
+        elif a[0] == 'scan':    # 每日市場掃描（只是參考資料，可看可不看）
+            fp = os.path.join(DATA, 'scan.txt')
+            print(open(fp, encoding='utf-8').read() if os.path.exists(fp) else '還沒有市場掃描（雲端每天美東 20:05 後產生）')
         elif a[0] == 'order':
             cmd_order(a[1:])
         elif a[0] == 'selftest':

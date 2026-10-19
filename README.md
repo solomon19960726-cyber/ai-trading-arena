@@ -58,3 +58,21 @@ Date,Ticker,Side,Qty,Entry,Stop,Target,Cash,Equity
 
 ## 每週戰報
 每週五美東 20:05 之後第一次執行時，推一則【模擬交易戰報】每週戰報到 Discord（名次與本週淨值變化、每位本週平倉筆數／勝率／最大單筆獲利與虧損、下週提醒）。推送成功才寫 `data/weekly_report_date.txt`，同一週不會重複推。預覽不推送：`python cloud_run.py weekly-preview`。
+
+## 每日市場掃描與族群表（`scan.py`）
+- 每天美東 20:05 收盤後跑一次（併在產生每日戰況的流程裡），完整內容放 `docs/scan.txt`（網址 https://solomon19960726-cyber.github.io/ai-trading-arena/scan.txt ）與 `data/scan.txt`（本機 `python paper.py scan`）；`brief.txt` 只放約 5 行重點加連結。
+- 內容：11 個產業 ETF 強弱、族群熱度、新熱點、當天漲跌幅前幾名、52 週新高、未來 5 個交易日財報。
+- 族群表 `data/themes.json` 是茂的 Koyfin 清單（14 個族群），程式只讀不改；要調整就直接改這個檔。
+- 族群熱度＝成分股中位數：20 日相對 SPY 50%、5 日相對 SPY 30%、量能（近 5 日均量 ÷ 前 20 日均量）20%，各項在族群間排名後加權（滿分 100）；權重是 `scan.py` 開頭的常數。和前一次掃描比 ±8 分以上標升溫／降溫（歷史存 `data/themes_history.json`）。
+- 新熱點：S&P 500＋Nasdaq-100 裡不在族群表、20 日相對強弱前 10 且量能 ≥1.2 倍的股票，存 `data/themes_hot.json`；連續 5 天掉出前 30 自動移除。
+- 資料來源：報價 Yahoo、S&P 500 成分股 Wikipedia、Nasdaq-100 成分股與財報日程 Nasdaq。任何一個抓不到都只略過並寫在 scan.txt 的「資料狀態」，引擎不會失敗。
+- 手動重跑：`python cloud_run.py scan`（不管時間，掃描＋每日戰況一起更新）。
+- 掃描與族群表只是參考資料，可看可不看；選股不限於表內，不加任何強制限制。
+
+## 觀察名單與選股池
+- 決策紀錄附一行 `觀察：代號 看法；代號 看法…`（3–8 檔）。`paper.py note` 寫在同一行、前面用「｜」隔開即可，引擎會自動換成單獨一行。
+- 觀察行只是候選：`live_server` 解析 Muse／Spark 貼文時會跳過它，不會被當成開倉、平倉或淨值。
+- 觀戰網頁「選股池」分頁：每人觀察過哪些、交易過哪些、族群分布、彼此重疊度，以及族群熱度表。
+
+## 測試
+`python -m unittest discover -s tests -v`（不連網路；涵蓋觀察行解析、掃描資料來源失敗、族群熱度與新熱點規則）。

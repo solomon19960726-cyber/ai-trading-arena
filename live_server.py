@@ -105,6 +105,15 @@ EQ_RE = re.compile(r'(?<!起始)(?:帳戶)?(?:總)?(?i:淨值|總資產|資產�
                    r'[^\d\n+\-]{0,15}?(?:US)?\$?\s*(\d+(?:\.\d+)?)(?![\d.%])')
 
 
+WATCH_START = re.compile(r'^[\W_]*(?:【[^】]*】|\[[^\]]*\])?[\W_]*觀察\s*:')   # 整行是「觀察：…」（前面可有表情、項目符號、【名字】）
+WATCH_INLINE = re.compile(r'(?:[;|]\s*|\s+)觀察\s*:.*$')                     # 同一行後半段「；觀察：…」
+
+
+def strip_watch(t):
+    """拿掉觀察名單（「觀察：代號 看法；…」）：它只是候選清單，絕不能被當成開倉／平倉／淨值。t 要先 normalize"""
+    return '\n'.join(WATCH_INLINE.sub('', line) for line in t.split('\n') if not WATCH_START.match(line))
+
+
 def normalize(text):
     """全形→半形（：｜＄＠１２３ 等）、去掉 Markdown 粗體／程式碼、去千分位、各種減號統一"""
     import unicodedata
@@ -145,7 +154,7 @@ def parse_position(chunk, tk=None):
 
 def parse_message(text, known=()):
     """回傳 {'opens': [...], 'closes': [(why, ticker, price)], 'cash': float|None, 'equity': float|None}"""
-    t = normalize(text)
+    t = strip_watch(normalize(text))
     opens, seen, closes = [], set(), []
     lines = [l.strip() for l in t.splitlines() if l.strip()]
     open_lines = set()
