@@ -11,6 +11,8 @@
   python paper.py order agent open TICKER long|short QTY STOP TARGET 理由...
   python paper.py order agent close POSITION_ID 理由...
   python paper.py order agent modify POSITION_ID STOP TARGET 理由...
+  python paper.py mao_holdings        （只給顧問任務用）印出茂的 FT 持股與現價
+  python paper.py advise agent 建議…  （只給顧問任務用）送出茂持股顧問建議：JSON、JSON 檔路徑，或「NVDA 續抱 200 240 理由；AMD 減碼 140 170 理由」
   python paper.py scan                印出每日市場掃描（產業 ETF、族群熱度、新熱點、財報；雲端每天收盤後更新）
   python paper.py selftest            測試報價與寫檔（不下單）
 """
@@ -234,6 +236,14 @@ def handle_order(s, o):
         if txt:
             event(agent, '📝 決策\n' + txt)
             log(f"{agent} 決策紀錄：{txt[:80]}")
+    elif act == 'advice':   # 茂持股顧問建議：只存 data/advice/，完全不碰比賽帳戶
+        import mao
+        items = mao.normalize_items(o.get('items'))
+        recs = mao.record_advice(agent, items, when=o.get('time'), prices=o.get('prices'), source='paper.py', log=log)
+        if recs:
+            post_discord('\n'.join(f"{r['ticker']}｜{r['action']}｜停損 {r['stop']}｜停利 {r['target']}｜R:R {r['rr'] if r['rr'] is not None else '—'}｜{r['reason']}"
+                                   for r in recs), NAMES.get(agent, agent), agent=agent, title='茂持股顧問')
+            log(f"{agent} 茂持股顧問建議 {len(recs)} 檔")
     elif act in ('close', 'modify'):
         p = next((x for x in s['positions'] if x['id'] == o.get('position_id') and x['agent'] == agent), None)
         if not p:
@@ -250,7 +260,7 @@ def handle_order(s, o):
             log(f"{agent} 調整 {p['ticker']} 停損 {p['stop']} 停利 {p['target']}")
             event(agent, f"🔧 調整 {p['ticker']}｜停損 {p['stop']}｜停利 {p['target']}｜{str(o.get('reason', ''))[:200]}")
     else:
-        reject(s, o, 'action 只能是 open / close / modify / note')
+        reject(s, o, 'action 只能是 open / close / modify / note / advice')
 
 
 def check_exits(s):
@@ -419,6 +429,8 @@ def ensure_codex_once_per_boot():
 COLORS = {'claude': 0x10b981, 'agy': 0x38bdf8, 'codex': 0xf59e0b, 'spark': 0xa855f7, 'muse': 0xec4899, 'arena': 0x6366f1}
 ICONS = {'claude': '🟢', 'agy': '🔵', 'codex': '🟠', 'spark': '🟣', 'muse': '🩷', 'arena': '📅'}
 NAMES.setdefault('arena', '模擬交易戰報')   # 五位合併的卡片（每週戰報），不是參賽者
+NAMES.setdefault('mao', '茂（FT 對照組）')   # 只用在 Discord 每日戰報的對照組卡片，不是參賽者
+COLORS['mao'], ICONS['mao'] = 0x64748b, '📋'
 
 
 def post_discord(text, username='模擬交易戰報', agent=None, title=None):
@@ -490,7 +502,7 @@ def cmd_run():
                 if owner and str(one.get('agent', '')).lower() != owner:
                     reject(s, one, f'單放在 {owner} 的下單匣，但 agent 寫 {one.get("agent")}')
                     continue
-                if is_open or one.get('action') == 'note':   # 決策紀錄隨時推；交易單要等開盤時段
+                if is_open or one.get('action') in ('note', 'advice'):   # 決策紀錄與顧問建議隨時處理；交易單要等開盤時段
                     handle_order(s, one)
                 else:
                     keep.append(one)
@@ -576,6 +588,38 @@ def cmd_order(argv):
     print('已放進下單匣，下一次撮合（最多 15 分鐘內、開盤時間）成交：' + fp)
 
 
+def cmd_advise(argv):
+    """顧問任務：python paper.py advise <claude|agy|codex> <JSON／JSON 檔／一行文字>；放進自己的下單匣，引擎存到 data/advice/"""
+    import mao
+    agent, raw = argv[0].lower(), ' '.join(argv[1:]).strip()
+    if agent not in AGENTS:
+        print('agent 只能是 ' + ' / '.join(AGENTS)); sys.exit(1)
+    if raw and os.path.isfile(raw):
+        raw = open(raw, encoding='utf-8').read().strip()
+    items = mao.normalize_items(json.loads(raw)) if raw[:1] in '{[' else mao.parse_advice_text(raw)
+    if not items:
+        print('讀不到建議。格式：{"items":[{"ticker":"NVDA","action":"續抱","stop":200,"target":240,"reason":"…"}]}'
+              ' 或「NVDA 續抱 200 240 理由；AMD 減碼 140 170 理由」'); sys.exit(1)
+    prices = {}
+    for it in items:
+        try:
+            prices[it['ticker']] = chart(it['ticker'])['price']
+        except Exception:
+            pass
+    o = {'agent': agent, 'action': 'advice', 'time': et_now().isoformat(timespec='seconds'), 'items': items, 'prices': prices}
+    box = os.path.join(INBOX, agent)
+    os.makedirs(box, exist_ok=True)
+    fp = os.path.join(box, f"{et_now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}_advice.json")
+    with open(fp, 'w', encoding='utf-8') as f:
+        json.dump(o, f, ensure_ascii=False, indent=2)
+    for it in items:
+        p = prices.get(it['ticker'])
+        ok = p and it['stop'] and it['target'] and it['stop'] < p < it['target']
+        rr = f"{(it['target'] - p) / (p - it['stop']):.2f}" if ok else '—（需 停損 < 現價 < 停利 才計分）'
+        print(f"{it['ticker']}｜{it['action']}｜現價 {p}｜停損 {it['stop']}｜停利 {it['target']}｜R:R {rr}")
+    print('已放進下單匣（只存成顧問建議，不影響比賽帳戶）：' + fp)
+
+
 def cmd_selftest():
     print('美東時間', et_now().isoformat(), '時段', session())
     c = chart('NVDA')
@@ -606,6 +650,11 @@ if __name__ == '__main__':
         elif a[0] == 'brief':   # 每日收盤戰況（名次＋大家的持倉與平倉），雲端每天美東 20:05 後更新
             fp = os.path.join(DATA, 'daily_brief.md')
             print(open(fp, encoding='utf-8').read() if os.path.exists(fp) else '還沒有每日戰況（雲端每天美東 20:05 後產生）')
+        elif a[0] == 'mao_holdings':   # 只給顧問任務用（ADVISOR_INSTRUCTIONS.md）
+            import mao
+            print(mao.holdings_text())
+        elif a[0] == 'advise':
+            cmd_advise(a[1:])
         elif a[0] == 'scan':    # 每日市場掃描（只是參考資料，可看可不看）
             fp = os.path.join(DATA, 'scan.txt')
             print(open(fp, encoding='utf-8').read() if os.path.exists(fp) else '還沒有市場掃描（雲端每天美東 20:05 後產生）')

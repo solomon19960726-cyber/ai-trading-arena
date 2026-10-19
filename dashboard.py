@@ -252,6 +252,14 @@ def strategy_stats(a, state, ext):
     }
 
 
+def mao_summary(quotes):
+    try:
+        import mao
+        return mao.summary(quotes)
+    except Exception as e:
+        return {'error': str(e)}
+
+
 def load_scan():
     """每日市場掃描（scan.py 產生）的精簡版：族群熱度、產業 ETF、新熱點"""
     try:
@@ -376,7 +384,9 @@ def analyze_message(m):
     hold = re.search(r'(?:本次不動作|PASS\s*不動作)\s*[^：:\w]{0,3}[：:]?\s*([^。\n]*)', t)
     if hold and not any(a['type'] in ('open', 'close') for a in actions):
         actions.append({'type': 'hold', 'why': _clip(hold.group(1), 80)})
-    if '測試成功' in t[:120]:
+    if '茂持股顧問' in t[:200]:
+        kind = 'advice'   # 顧問任務，不是比賽決策
+    elif '測試成功' in t[:120]:
         kind = 'info'
     elif any(w in t for w in REPORT_WORDS):
         kind = 'report'
@@ -387,6 +397,8 @@ def analyze_message(m):
     else:
         kind = 'info'
     tickers = sorted({x for x in re.findall(r'(?<![A-Za-z])([A-Z]{2,5})(?![A-Za-z])', t) if x in HOT_TICKERS})
+    if kind == 'advice':
+        actions, senti = [], 'neutral'
     tickers = sorted(set(tickers) | {w[0] for w in watch})
     return {'kind': kind, 'headline': head or '', 'sentiment': senti,
             'actions': actions, 'tickers': tickers, 'watch': [list(w) for w in watch]}
@@ -504,7 +516,7 @@ def discord_digest(feed, day=None):
             m['_d'] = datetime.fromisoformat(m['time']).astimezone(tz)
         except Exception:
             m['_d'] = None
-    talk = [m for m in feed if m['_d'] and m.get('agent') in ids]
+    talk = [m for m in feed if m['_d'] and m.get('agent') in ids and m.get('kind') != 'advice']   # 顧問任務不算比賽對話
     if not talk:
         return None
     day = day or max(m['_d'] for m in talk).date()
@@ -645,6 +657,11 @@ def build_state(fast=True):
     for ag_data in ext.values():
         for p in ag_data.get('positions', []):
             tickers.add(p['ticker'])
+    try:
+        import mao
+        tickers |= mao.tickers()   # 茂的 FT 持股與追蹤中的顧問建議（只給「茂」分頁）
+    except Exception:
+        pass
 
     quotes = {}
     import concurrent.futures
@@ -803,6 +820,7 @@ def build_state(fast=True):
         'discord': feed,
         'digests': discord_digests(feed),
         'pools': stock_pools(state, ext, feed),
+        'mao': mao_summary(quotes),
         'scan': load_scan(),
         'drawdown_curve': dd_series[-400:]
     }
