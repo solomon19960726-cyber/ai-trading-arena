@@ -374,7 +374,7 @@ def detect_agent(text, username=''):
 
 def poll_discord():
     import urllib.request
-    token, channel = os.environ.get('DISCORD_BOT_TOKEN'), os.environ.get('DISCORD_CHANNEL_ID')
+    token, channel = (os.environ.get('DISCORD_BOT_TOKEN') or '').strip(), (os.environ.get('DISCORD_CHANNEL_ID') or '').strip()
     if not (token and channel):
         try:
             lines = [l.strip() for l in open(BOT_FILE, encoding='utf-8').read().splitlines() if l.strip()]
