@@ -107,6 +107,19 @@
   .ev .hd { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
   .ev .t { font-size: 13px; font-weight: 600; margin-top: 4px; }
   .ev p { margin: 4px 0 0; font-size: 12.5px; color: var(--text-2); white-space: pre-wrap; }
+  .dc { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--line); }
+  .dc:last-child { border-bottom: 0; }
+  .av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 14px; }
+  .dc .hd { display: flex; align-items: baseline; gap: 8px; font-size: 13px; flex-wrap: wrap; }
+  .dc .hd b { font-size: 14px; }
+  .dc .body { font-size: 13px; color: var(--text-2); white-space: pre-wrap; margin-top: 2px; }
+  .emb { margin-top: 6px; border-left: 4px solid var(--line-2); background: var(--card-2); border-radius: 4px 8px 8px 4px; padding: 8px 12px; }
+  .emb .et { font-weight: 700; font-size: 13.5px; color: var(--text); }
+  .emb .ed { font-size: 13px; color: var(--text-2); white-space: pre-wrap; margin-top: 4px; }
+  .emb .ef { font-size: 11px; color: var(--text-3); margin-top: 6px; }
+  .emb img, .dc .att { display: block; max-width: 100%; border-radius: 8px; margin-top: 8px; }
+  .more { margin-top: 4px; font-size: 12px; color: var(--accent); background: none; border: 0; padding: 0; }
+  .feed .dc .clamp { display: -webkit-box; -webkit-line-clamp: 8; -webkit-box-orient: vertical; overflow: hidden; }
   .badge { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--card); border: 1px solid var(--line-2); color: var(--text-2); }
 
   /* filters */
@@ -233,7 +246,7 @@
     <button class="tab" role="tab" data-tab="positions">持倉</button>
     <button class="tab" role="tab" data-tab="analytics">績效分析</button>
     <button class="tab" role="tab" data-tab="trades">交易紀錄</button>
-    <button class="tab" role="tab" data-tab="feed">動態與筆記</button>
+    <button class="tab" role="tab" data-tab="feed">Discord 與筆記</button>
   </div>
 </nav>
 
@@ -332,18 +345,18 @@
   </section>
 
   <section data-panel="feed" hidden>
-    <div class="grid2">
+    <div class="grid-7-5">
+      <div class="card">
+        <h2>Discord #模擬交易對戰</h2>
+        <p class="desc" id="feed-desc">頻道訊息鏡像，最新的在最上面；雲端每 15 分鐘讀一次頻道。</p>
+        <div class="filters" id="ev-filter"></div>
+        <div class="feed" id="feed"></div>
+      </div>
       <div class="card">
         <h2>學習筆記</h2>
         <p class="desc">各 AI 決策後寫下的市場觀察與自我修正。</p>
         <div class="note-tabs" id="note-tabs"></div>
         <div class="note" id="note"></div>
-      </div>
-      <div class="card">
-        <h2>Discord 動態</h2>
-        <p class="desc">開倉、平倉、調整停損與決策紀錄。</p>
-        <div class="filters" id="ev-filter"></div>
-        <div class="feed" id="feed"></div>
       </div>
     </div>
   </section>
@@ -620,7 +633,32 @@ function renderNotes() {
   $('note-tabs').querySelectorAll('.fchip').forEach(b => b.onclick = () => { noteTab = b.dataset.id; renderNotes(); });
   $('note').textContent = (STATE.notes || {})[noteTab] || `目前沒有 ${NAME[noteTab]} 的學習筆記。`;
 }
+const md = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/__(.+?)__/g, '<u>$1</u>');
+const etTime = iso => { try { return new Date(iso).toLocaleString('zh-TW', { timeZone: 'America/New_York', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) + ' ET'; } catch (e) { return iso || ''; } };
 function renderEvents() {
+  const D = STATE.discord || [];
+  if (D.length) {
+    chips('ev-filter', 'ev', renderEvents);
+    const list = D.filter(m => !filt.ev || m.agent === filt.ev).slice(0, 100);
+    $('feed-desc').textContent = `頻道訊息鏡像（${D.length} 則），最新的在最上面；雲端每 15 分鐘讀一次頻道。`;
+    $('feed').innerHTML = list.length ? list.map(m => {
+      const known = IDS.includes(m.agent);
+      const avc = known ? col(m.agent) : 'var(--accent)';
+      const emb = (m.embeds || []).map(e => `<div class="emb" style="border-left-color:${known ? col(m.agent) : (e.color || 'var(--line-2)')}">
+          ${e.title ? `<div class="et">${md(e.title)}</div>` : ''}${e.description ? `<div class="ed clamp">${md(e.description)}</div>` : ''}
+          ${e.image ? `<img loading="lazy" src="${esc(e.image)}" alt="">` : ''}${e.footer ? `<div class="ef">${esc(e.footer)}</div>` : ''}</div>`).join('');
+      return `<div class="dc"><div class="av" style="background:${avc}">${esc((m.author || '?').slice(0, 1).toUpperCase())}</div>
+        <div style="min-width:0"><div class="hd"><b>${esc(m.author)}</b><span class="num muted">${etTime(m.time)}</span></div>
+          ${m.content ? `<div class="body clamp">${md(m.content)}</div>` : ''}${emb}
+          ${(m.images || []).map(u => `<img class="att" loading="lazy" src="${esc(u)}" alt="">`).join('')}
+          <button class="more" hidden>展開全文</button></div></div>`;
+    }).join('') : '<div class="empty">這位還沒有訊息</div>';
+    $('feed').querySelectorAll('.dc').forEach(d => {
+      const c = [...d.querySelectorAll('.clamp')], b = d.querySelector('.more');
+      if (c.some(x => x.scrollHeight > x.clientHeight + 2)) { b.hidden = false; b.onclick = () => { c.forEach(x => x.classList.remove('clamp')); b.hidden = true; }; }
+    });
+    return;
+  }
   chips('ev-filter', 'ev', renderEvents);
   const E = (STATE.events || []).filter(e => !filt.ev || e.agent === filt.ev);
   $('feed').innerHTML = E.length ? E.map(e => `<div class="ev" style="border-left-color:${col(e.agent)}">
@@ -641,7 +679,7 @@ function setTab(t) {
 }
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => setTab(b.dataset.tab));
 window.addEventListener('hashchange', () => setTab(location.hash.slice(1)));
-function renderCharts() { if (tab === 'overview') renderEquity(); if (tab === 'analytics') renderDrawdown(); }
+function renderCharts() { if (tab === 'overview') renderEquity(); if (tab === 'analytics') renderDrawdown(); if (tab === 'feed') renderEvents(); }
 let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(renderCharts, 150); });
 
 function wrapCells(id) {
