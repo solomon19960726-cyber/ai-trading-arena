@@ -294,5 +294,194 @@ class ScanTest(unittest.TestCase):
         self.assertIn('scan.txt', b[0])
 
 
+
+import mao as MAO
+
+
+class MaoTest(unittest.TestCase):
+    """茂 FT 對照組與顧問 R:R"""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.saved = {k: getattr(MAO, k) for k in ('DATA', 'DOCS', 'FT_FILE', 'ACCT_FILE', 'ADV_DIR', 'REPORT_MARK')}
+        MAO.DATA, MAO.DOCS = os.path.join(self.tmp, 'data'), os.path.join(self.tmp, 'docs')
+        MAO.FT_FILE = os.path.join(MAO.DATA, 'mao_ft.json')
+        MAO.ACCT_FILE = os.path.join(MAO.DATA, 'mao_account.json')
+        MAO.ADV_DIR = os.path.join(MAO.DATA, 'advice')
+        MAO.REPORT_MARK = os.path.join(MAO.DATA, 'mao_report_date.txt')
+        os.makedirs(MAO.DATA)
+        self.logs = []
+
+    def tearDown(self):
+        for k, v in self.saved.items():
+            setattr(MAO, k, v)
+        shutil.rmtree(self.tmp)
+
+    def ft(self, holdings):
+        with open(MAO.FT_FILE, 'w', encoding='utf-8') as f:
+            json.dump({'updated': 'x', 'holdings': holdings}, f)
+
+    # ---- 時間加權 ----
+    def test_time_weighted_nav_ignores_deposits(self):
+        h = [{'ticker': 'AAA', 'shares': 10, 'cost': 0}, {'ticker': 'BBB', 'shares': 10, 'cost': 0}]
+        acct, _ = MAO.record_close('2026-10-20', {'AAA': 100, 'BBB': 100}, h, {'start': '2026-10-20', 'base': 10000, 'days': []})
+        self.assertEqual(acct['days'][0]['nav'], 10000)
+        self.assertEqual(acct['days'][0]['units'], {'AAA': 50.0, 'BBB': 50.0})   # 比例換算成小數股
+        acct, _ = MAO.record_close('2026-10-21', {'AAA': 110, 'BBB': 100}, h, acct)
+        self.assertAlmostEqual(acct['days'][1]['nav'], 10500, places=2)          # 50%×10% ＝ +5%
+        # 茂加碼（入金買進）：股數變三倍，報酬不能因此跳
+        h2 = [{'ticker': 'AAA', 'shares': 30, 'cost': 0}, {'ticker': 'BBB', 'shares': 30, 'cost': 0}]
+        acct, _ = MAO.record_close('2026-10-22', {'AAA': 110, 'BBB': 100}, h2, acct)
+        self.assertAlmostEqual(acct['days'][2]['nav'], 10500, places=2)
+        # 只賣掉 BBB：之後只跟 AAA
+        acct, _ = MAO.record_close('2026-10-23', {'AAA': 121, 'BBB': 50}, [{'ticker': 'AAA', 'shares': 30, 'cost': 0}], acct)
+        self.assertAlmostEqual(acct['days'][3]['nav'], 10500 * (1 + (110 * 30 / (110 * 30 + 100 * 30)) * 0.1 + (100 * 30 / (110 * 30 + 100 * 30)) * -0.5), places=2)
+        acct, _ = MAO.record_close('2026-10-26', {'AAA': 133.1}, [{'ticker': 'AAA', 'shares': 30, 'cost': 0}], acct)
+        self.assertAlmostEqual(acct['days'][4]['nav'] / acct['days'][3]['nav'], 1.1, places=4)
+        self.assertEqual(MAO.record_close('2026-10-26', {'AAA': 1}, h, acct)[1], False)   # 同一天不重記
+        self.assertAlmostEqual(MAO.live_nav(acct, {'AAA': 146.41}), round(acct['days'][4]['nav'] * 1.1, 2), places=1)
+
+    def test_not_before_start_or_close(self):
+        self.ft([{'ticker': 'AAA', 'shares': 1, 'cost': 1}])
+        fd = lambda t: [{'t': int(datetime(2026, 10, 19, 20, tzinfo=timezone.utc).timestamp()), 'o': 1, 'h': 1, 'l': 1, 'c': 1}]
+        self.assertFalse(MAO.daily_close_step(now=datetime(2026, 10, 19, 17, tzinfo=ET), fetch_daily=fd, log=self.logs.append))   # 起算日前
+        self.assertFalse(MAO.daily_close_step(now=datetime(2026, 10, 20, 15, tzinfo=ET), fetch_daily=fd, log=self.logs.append))   # 收盤前
+        fd2 = lambda t: [{'t': int(datetime(2026, 10, 20, 20, tzinfo=timezone.utc).timestamp()), 'o': 1, 'h': 1, 'l': 1, 'c': 5}]
+        self.assertTrue(MAO.daily_close_step(now=datetime(2026, 10, 20, 17, tzinfo=ET), fetch_daily=fd2, log=self.logs.append))
+        self.assertFalse(MAO.daily_close_step(now=datetime(2026, 10, 20, 21, tzinfo=ET), fetch_daily=fd2, log=self.logs.append))
+
+    # ---- 顧問建議解析：絕不進比賽 ----
+    ADV = """【Muse】茂持股顧問
+NVDA｜續抱｜停損 205｜停利 240｜R:R 2.1｜守 210 抗跌
+MSFT｜減碼｜停損 $520｜停利 $560｜R:R 1.4｜跌破季線
+【Muse】淨值 $1,234｜現金 $5｜成交 TSLA｜做多｜5股｜@250｜停損 240｜停利 275"""
+
+    def test_parse_formats(self):
+        self.assertEqual([(x['ticker'], x['action'], x['stop'], x['target']) for x in MAO.parse_advice_text(self.ADV)][:2],
+                         [('NVDA', '續抱', 205.0, 240.0), ('MSFT', '減碼', 520.0, 560.0)])
+        one = MAO.parse_advice_text('NVDA 續抱 205 240 抗跌；AMD 減碼 140 170 量縮')
+        self.assertEqual([(x['ticker'], x['reason']) for x in one], [('NVDA', '抗跌'), ('AMD', '量縮')])
+        self.assertEqual(MAO.normalize_items({'items': [{'ticker': 'nvda', 'action': '亂寫', 'stop': '205', 'target': 240}]})[0]['action'], '續抱')
+
+    def test_discord_advisor_message_never_touches_competition(self):
+        tmp_ext = os.path.join(self.tmp, 'ext.json')
+        old = (L.EXT_FILE, L.LAST_FILE, L.FEED_FILE, L.refresh)
+        try:
+            L.EXT_FILE, L.LAST_FILE, L.FEED_FILE = tmp_ext, os.path.join(self.tmp, 'last.json'), os.path.join(self.tmp, 'feed.json')
+            L.refresh = lambda force=False: None
+            with open(tmp_ext, 'w', encoding='utf-8') as f:
+                json.dump({'muse': {'cash': 370.79, 'positions': [], 'trades': [], 'equity_reported': 9900, 'equity_time': '2026-10-19T08:00:00-04:00'}}, f)
+            msgs = [{'id': '5', 'timestamp': '2026-10-19T12:50:00+00:00', 'author': {'username': 'mao'}, 'content': self.ADV, 'embeds': []}]
+            import io, urllib.request as U
+            orig = U.urlopen
+            U.urlopen = lambda req, timeout=0: io.BytesIO(json.dumps(msgs).encode())
+            os.environ['DISCORD_BOT_TOKEN'], os.environ['DISCORD_CHANNEL_ID'] = 'x', '1'
+            MAO.last_price, orig_lp = (lambda t: {'NVDA': 218.0, 'MSFT': 532.0}[t]), MAO.last_price
+            try:
+                L.poll_discord()
+            finally:
+                U.urlopen, MAO.last_price = orig, orig_lp
+                os.environ.pop('DISCORD_BOT_TOKEN'); os.environ.pop('DISCORD_CHANNEL_ID')
+            with open(tmp_ext, encoding='utf-8') as f:
+                e = json.load(f)['muse']
+            self.assertEqual((e['positions'], e['cash'], e['equity_reported']), ([], 370.79, 9900))
+            self.assertNotIn('messages', e)
+            recs = MAO.load_advice()
+            self.assertEqual(sorted(r['ticker'] for r in recs), ['MSFT', 'NVDA'])
+            self.assertTrue(all(r['agent'] == 'muse' and r['source'] == 'discord' for r in recs))
+        finally:
+            L.EXT_FILE, L.LAST_FILE, L.FEED_FILE, L.refresh = old
+
+    def test_paper_advice_order_does_not_touch_account(self):
+        s = {'accounts': {'claude': {'cash': 4482.58}}, 'positions': [], 'trades': [], 'rejected': []}
+        posted = []
+        orig = (P.post_discord, P.log)
+        P.post_discord, P.log = (lambda text, *a, **k: posted.append((text, k)) or True), (lambda m: None)
+        try:
+            P.handle_order(s, {'agent': 'claude', 'action': 'advice', 'time': '2026-10-21T08:50:00-04:00',
+                               'items': [{'ticker': 'NVDA', 'action': '續抱', 'stop': 205, 'target': 240, 'reason': 'x'}], 'prices': {'NVDA': 218}})
+        finally:
+            P.post_discord, P.log = orig
+        self.assertEqual(s, {'accounts': {'claude': {'cash': 4482.58}}, 'positions': [], 'trades': [], 'rejected': []})
+        self.assertEqual(MAO.load_advice()[0]['rr'], 1.69)
+        self.assertEqual(posted[0][1]['title'], '茂持股顧問')
+
+    # ---- R:R 判定 ----
+    def bar(self, ts, o, h, l, c):
+        return {'t': int(datetime.fromisoformat(ts).timestamp()), 'o': o, 'h': h, 'l': l, 'c': c}
+
+    def test_evaluate_rules(self):
+        T = '2026-10-21T09:00:00-04:00'
+        MAO.record_advice('claude', [{'ticker': 'TGT', 'action': '續抱', 'stop': 90, 'target': 120, 'reason': ''}], when=T, prices={'TGT': 100})
+        MAO.record_advice('claude', [{'ticker': 'BTH', 'action': '續抱', 'stop': 90, 'target': 120, 'reason': ''}], when=T, prices={'BTH': 100})
+        MAO.record_advice('agy', [{'ticker': 'GAP', 'action': '續抱', 'stop': 90, 'target': 120, 'reason': ''}], when=T, prices={'GAP': 100})
+        MAO.record_advice('agy', [{'ticker': 'OLD', 'action': '續抱', 'stop': 90, 'target': 120, 'reason': ''}], when=T, prices={'OLD': 100})
+        MAO.record_advice('codex', [{'ticker': 'BAD', 'action': '出場', 'stop': None, 'target': None, 'reason': ''}], when=T, prices={'BAD': 100})
+        bars = {
+            'TGT': [self.bar('2026-10-21T08:55:00-04:00', 100, 130, 80, 100),            # 建議前的 K 不算
+                    self.bar('2026-10-21T09:05:00-04:00', 101, 121, 95, 118)],           # 先碰停利
+            'BTH': [self.bar('2026-10-21T09:05:00-04:00', 100, 125, 85, 100)],           # 同根都碰 → 停損
+            'GAP': [self.bar('2026-10-22T04:00:00-04:00', 80, 82, 78, 81)],              # 跳空越過停損 → 開盤價 80
+            'OLD': [self.bar('2026-10-21T09:05:00-04:00', 100, 105, 95, 104)]}
+        spy = [{'t': int(datetime(2026, 10, 21, 20, tzinfo=timezone.utc).timestamp()) + 86400 * i, 'o': 1, 'h': 1, 'l': 1, 'c': 1} for i in range(30)]
+        MAO.evaluate(now=datetime(2026, 11, 30, 12, tzinfo=ET), fetch_intraday=lambda t: bars[t], fetch_daily=lambda t: spy, log=self.logs.append)
+        by = {r['ticker']: r for r in MAO.load_advice()}
+        self.assertEqual((by['TGT']['status'], by['TGT']['exit'], by['TGT']['r']), ('target', 120, 2.0))
+        self.assertEqual((by['BTH']['status'], by['BTH']['exit'], by['BTH']['r']), ('stop', 90, -1.0))
+        self.assertEqual((by['GAP']['status'], by['GAP']['exit'], by['GAP']['r']), ('stop', 80, -2.0))
+        self.assertEqual((by['OLD']['status'], by['OLD']['exit'], by['OLD']['r']), ('expired', 104, 0.4))   # 20 個交易日到期，以當時價格
+        self.assertEqual(by['BAD']['status'], 'unscored')
+        lb = {x['agent']: x for x in MAO.leaderboard()}
+        self.assertEqual((lb['claude']['hit_rate'], lb['claude']['avg_r'], lb['claude']['sim_pnl']), (50.0, 0.5, 100.0))
+        self.assertEqual((lb['agy']['avg_r'], lb['agy']['expired']), (-0.8, 1))
+        self.assertEqual(lb['codex']['scored'], 0)
+
+    def test_new_advice_supersedes_old_at_current_price(self):
+        MAO.record_advice('spark', [{'ticker': 'NVDA', 'action': '續抱', 'stop': 200, 'target': 240, 'reason': ''}], when='2026-10-21T08:50:00-04:00', prices={'NVDA': 210})
+        MAO.record_advice('spark', [{'ticker': 'NVDA', 'action': '加碼', 'stop': 205, 'target': 250, 'reason': ''}], when='2026-10-21T13:50:00-04:00', prices={'NVDA': 215})
+        recs = sorted(MAO.load_advice(), key=lambda r: r['time'])
+        self.assertEqual((recs[0]['status'], recs[0]['exit'], recs[0]['r']), ('superseded', 215, 0.5))
+        self.assertEqual(recs[1]['status'], 'open')
+        MAO.record_advice('muse', [{'ticker': 'NVDA', 'action': '續抱', 'stop': 200, 'target': 240, 'reason': ''}], when='2026-10-21T14:00:00-04:00', prices={'NVDA': 216})
+        self.assertEqual(sorted(r['status'] for r in MAO.load_advice() if r['agent'] == 'spark'), ['open', 'superseded'])   # 別人的不受影響
+
+    def test_ranking_needs_min_settled(self):
+        recs = [{'agent': 'claude', 'scored': True, 'status': 'target', 'r': 3.0, 'ret': 5, 'ticker': 'A', 'price': 1, 'stop': 0.5}] + \
+               [{'agent': 'agy', 'scored': True, 'status': s, 'r': r, 'ret': 1, 'ticker': 'A', 'price': 1, 'stop': 0.5} for s, r in (('target', 1.0), ('stop', -1.0), ('target', 1.5))]
+        lb = MAO.leaderboard(recs)
+        self.assertEqual([x['agent'] for x in lb][:2], ['agy', 'claude'])   # Claude 平均 R 較高但只結算 1 筆，排在後面
+
+    # ---- 隱私：茂只出現在觀戰網頁與 Discord 每日戰報 ----
+    def test_mao_not_in_ai_readable_outputs(self):
+        import cloud_run as C
+        st = {'agents': [{'id': 'claude', 'name': 'Claude', 'equity': 10000, 'ret_pct': 0, 'positions': [], 'trades': []}], 'trades': [],
+              'mao': {'nav': 10500, 'holdings': [{'ticker': 'NVDA'}]}}
+        tmp_docs = os.path.join(self.tmp, 'd')
+        old = (C.DOCS, C.BASE)
+        try:
+            C.DOCS, C.BASE = tmp_docs, self.tmp
+            os.makedirs(os.path.join(self.tmp, 'data'), exist_ok=True)
+            C.build_brief(st, force=True)
+            with open(os.path.join(tmp_docs, 'brief.txt'), encoding='utf-8') as f:
+                self.assertNotIn('茂（FT', f.read())
+        finally:
+            C.DOCS, C.BASE = old
+        self.assertNotIn('茂', S.render_text({'date': '2026-10-21', 'generated': '2026-10-21 20:10 ET', 'status': [], 'sectors': [], 'themes': [],
+                                              'hot': {}, 'gainers': [], 'losers': [], 'new_highs': [], 'earnings': []}, groups={}))
+        self.assertNotIn('mao', P.AGENTS)
+        self.assertNotIn('mao', [a for a in D.AGENT_META])
+        import bridge
+        self.assertFalse(any('mao' in x for x in bridge.PULL))   # 不會被同步回 AI 的電腦
+
+    def test_daily_report_once(self):
+        posted = []
+        post = lambda text, **k: posted.append(text) or True
+        now = datetime(2026, 10, 21, 20, 30, tzinfo=ET)
+        self.assertTrue(MAO.daily_report(post, now=now, log=self.logs.append))
+        self.assertFalse(MAO.daily_report(post, now=now, log=self.logs.append))
+        self.assertIn('茂（FT 對照組）', posted[0])
+        self.assertFalse(MAO.daily_report(post, now=datetime(2026, 10, 22, 19, 0, tzinfo=ET), log=self.logs.append))
+
+
 if __name__ == '__main__':
     unittest.main()

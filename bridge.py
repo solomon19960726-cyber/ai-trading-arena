@@ -6,7 +6,7 @@
 需要：github_token.txt（第一行：GitHub fine-grained token，只給這個 repo 的 Contents 讀寫；第二行：owner/repo）
 這個檔不會上傳 GitHub（.gitignore）。
 """
-import os, json, glob, base64, shutil, urllib.request, urllib.error
+import os, json, glob, base64, hashlib, shutil, urllib.request, urllib.error
 from datetime import datetime
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -83,8 +83,40 @@ def kick_cloud():
         _log(f'觸發雲端引擎失敗：{e}')
 
 
+def push_mao_ft():
+    """茂電腦上的排程把 FT 持股寫到 data/mao_ft.json；有變就更新到 GitHub（需要原檔 sha）"""
+    fp = os.path.join(BASE, 'data', 'mao_ft.json')
+    mark = os.path.join(BASE, 'data', 'mao_ft.pushed')
+    if not os.path.exists(fp):
+        return
+    raw = open(fp, 'rb').read()
+    try:
+        json.loads(raw.decode('utf-8'))
+    except Exception as e:
+        return _log(f'mao_ft.json 格式錯誤，沒上傳：{e}')
+    digest = hashlib.sha1(raw).hexdigest()
+    if os.path.exists(mark) and open(mark).read().strip() == digest:
+        return
+    try:
+        try:
+            sha = _api('GET', 'data/mao_ft.json').get('sha')
+        except urllib.error.HTTPError as e:
+            if e.code != 404:   # 404＝雲端還沒有這個檔，直接新增
+                raise
+            sha = None
+        body = {'message': '茂 FT 持股更新', 'content': base64.b64encode(raw).decode()}
+        if sha:
+            body['sha'] = sha
+        _api('PUT', 'data/mao_ft.json', body)
+        open(mark, 'w').write(digest)
+        _log('已上傳 mao_ft.json')
+    except Exception as e:
+        _log(f'上傳 mao_ft.json 失敗：{e}')
+
+
 def sync():
     push_orders()
+    push_mao_ft()
     kick_cloud()
     pull_state()
 
