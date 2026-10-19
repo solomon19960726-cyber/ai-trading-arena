@@ -76,3 +76,13 @@ Date,Ticker,Side,Qty,Entry,Stop,Target,Cash,Equity
 
 ## 測試
 `python -m unittest discover -s tests -v`（不連網路；涵蓋觀察行解析、掃描資料來源失敗、族群熱度與新熱點規則）。
+
+## 茂的 FT 對照組＋五位顧問 R:R 排行榜（`mao.py`）
+- **茂帳戶（對照組，不是第六位選手）**：持股來源 `data/mao_ft.json`（`{"updated": "...", "holdings": [{"ticker", "shares", "cost"}]}`，shares 是 FT 真實股數），由茂電腦上的排程每天盤前／盤中／盤後從 Yahoo 自選股「FT」群組讀出，經 `bridge.py` 上傳。引擎只讀不改。
+  - 從 2026-10-20 美東收盤起算，起始一律換算成 US$10,000（依市值比例換算成小數模擬股數）。
+  - 時間加權：每天 16:05 後記一筆收盤淨值，當日報酬＝Σ 前一日權重 ×（今日收盤 ÷ 前一日收盤 − 1），連乘；茂買賣後在當天收盤照新比例換算，入金出金不影響。狀態存 `data/mao_account.json`。
+  - 「茂」只出現在觀戰網頁「茂」分頁與 Discord 每日戰報，不進 brief.txt、scan.txt、`paper.py status／brief`，也不在 bridge 同步回 AI 電腦的清單裡。
+- **顧問建議**：Claude／AGY／Codex 照 `ADVISOR_INSTRUCTIONS.md`（每天美東 8:50、13:50、17:50，全新對話）用 `paper.py mao_holdings` 看持股、`paper.py advise <agent> …` 送建議；Muse／Spark 照 `MUSE_ADVISOR_PROMPT.md`／`SPARK_ADVISOR_PROMPT.md` 在另開的顧問聊天室推「【名字】茂持股顧問」到 Discord。全部存 `data/advice/YYYY-MM.json`，絕不碰比賽帳戶；Discord 的顧問貼文不會被當成比賽的開倉／平倉／淨值。
+- **R:R 判定**：建議之後用 5 分 K（含盤前盤後）看先碰停利還是停損；同一根都碰算停損；跳空越過用開盤價；20 個交易日沒碰到以當時價格結算；同一位顧問對同一檔給新建議時，舊的那筆以新建議當下的價格結算。沒有「停損 < 當時價格 < 停利」的建議照樣記錄但不計分。
+- **排行**：命中率＝先碰停利 ÷（先碰停利＋先碰停損）；平均 R＝已結算（含到期、被更新）R 平均；模擬損益＝每筆 US$1,000 照停損停利出場的損益總和；依平均 R 排序，已結算未滿 3 筆排在後面。每天 20:05 後推 Discord「FT 對照組＋顧問 R:R 排行」（前三名）。
+- Muse 讀持股的網址：https://solomon19960726-cyber.github.io/ai-trading-arena/mao_ft.txt （引擎每次執行更新）。
