@@ -258,8 +258,12 @@ def load_scan():
         sc = json.load(open(os.path.join(DATA, 'scan.json'), encoding='utf-8'))
     except Exception:
         return None
-    return {'date': sc.get('date'), 'themes': sc.get('themes', []), 'hot': sc.get('hot', {}),
-            'sectors': [[s, n, round(m['r20'], 1), round(m['r5'], 1)] for s, n, m in sc.get('sectors', [])]}
+    r = lambda x: round(x, 2) if isinstance(x, (int, float)) else x
+    return {'date': sc.get('date'), 'generated': sc.get('generated'), 'status': sc.get('status', []),
+            'themes': sc.get('themes', []), 'hot': sc.get('hot', {}),
+            'sectors': [[s, n, r(m['r1']), r(m['r5']), r(m['r20']), r(m.get('rel20'))] for s, n, m in sc.get('sectors', [])],
+            'gainers': [[t, r(x)] for t, x, _ in sc.get('gainers', [])], 'losers': [[t, r(x)] for t, x, _ in sc.get('losers', [])],
+            'new_highs': [t for t, _ in sc.get('new_highs', [])], 'earnings': sc.get('earnings', [])}
 
 
 def load_feed():

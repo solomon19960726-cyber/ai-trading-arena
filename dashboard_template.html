@@ -150,6 +150,13 @@
   .hot { display: flex; flex-wrap: wrap; gap: 6px; }
   .hot > span { font-size: 12px; padding: 4px 10px; border-radius: 10px; background: var(--card-2); border: 1px solid var(--line); }
   .hot b { margin-right: 4px; }
+  .scan-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .grid2.tight { gap: 12px; }
+  .mv { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+  .mv:last-child { border-bottom: 0; }
+  .er { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 10px; padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
+  .er:last-child { border-bottom: 0; }
+  .er .d { font-weight: 700; color: var(--text-2); }
   .pools { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
   .pool { border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: var(--card-2); border-top: 3px solid; min-width: 0; }
   .pool .hd { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
@@ -290,6 +297,7 @@
     <button class="tab" role="tab" data-tab="positions">持倉</button>
     <button class="tab" role="tab" data-tab="analytics">績效分析</button>
     <button class="tab" role="tab" data-tab="pools">選股池</button>
+    <button class="tab" role="tab" data-tab="scan">市場掃描</button>
     <button class="tab" role="tab" data-tab="trades">交易紀錄</button>
     <button class="tab" role="tab" data-tab="feed">Discord 與筆記</button>
   </div>
@@ -398,12 +406,44 @@
         <div id="common"></div>
       </div>
     </div>
+  </section>
+
+  <section data-panel="scan" hidden>
+    <div class="card scan-head">
+      <div><h2>每日市場掃描</h2><p class="desc" id="scan-desc" style="margin:0">每天美東收盤後更新。只是參考資料，可看可不看；選股不限於表內。</p></div>
+      <a class="btn" href="./scan.txt" target="_blank" rel="noopener">純文字版 scan.txt</a>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h2>11 個產業 ETF 強弱</h2>
+        <p class="desc">依 20 日報酬排序；色條是 20 日報酬，中線為 0%。</p>
+        <div class="bars" id="sector-bars"></div>
+      </div>
+      <div class="card">
+        <h2>今日漲跌幅前幾名</h2>
+        <p class="desc">S&amp;P 500＋Nasdaq-100＋族群股，日均成交額 &gt; 2,000 萬美元。</p>
+        <div class="grid2 tight"><div id="gainers"></div><div id="losers"></div></div>
+      </div>
+    </div>
     <div class="card">
-      <h2>族群熱度（每日收盤後更新）</h2>
+      <h2>族群熱度</h2>
       <p class="desc" id="heat-desc">茂的 14 個族群；20 日相對 SPY 50%、5 日相對 SPY 30%、量能 20%，滿分 100。只是參考，選股不限於表內。</p>
       <div class="tbl-wrap"><table class="rt" id="heat"></table></div>
       <div id="hot" style="margin-top:12px"></div>
     </div>
+    <div class="grid2">
+      <div class="card">
+        <h2>52 週新高</h2>
+        <p class="desc" id="nh-desc">依 20 日相對強弱排序。</p>
+        <div id="new-highs"></div>
+      </div>
+      <div class="card">
+        <h2>未來 5 個交易日財報</h2>
+        <p class="desc">只列 S&amp;P 500、Nasdaq-100 與族群股，依市值排序。</p>
+        <div id="earnings"></div>
+      </div>
+    </div>
+    <p class="muted" style="font-size:12px;margin:0" id="scan-status"></p>
   </section>
 
   <section data-panel="trades" hidden>
@@ -819,7 +859,38 @@ function renderPools() {
     }).join('')).join('') + '</div>';
   $('common').innerHTML = (P.common || []).length ? (P.common || []).map(([tk, who]) => `<div class="bar"><div class="lb"><b class="num">${esc(tk)}</b><span>${who.map(w => sw(w) + esc(NAME[w])).join('　')}</span></div>
       <div class="track">${who.map(w => `<div class="seg" style="width:${100 / ids.length}%;background:${col(w)}"></div>`).join('')}</div></div>`).join('') : '<div class="empty">還沒有重疊的標的</div>';
+}
+
+/* ---------- 市場掃描 ---------- */
+function renderScan() {
   const sc = STATE.scan;
+  const none = '<div class="empty">今天收盤後會產生第一份掃描</div>';
+  if (!sc) { ['sector-bars', 'gainers', 'losers', 'new-highs', 'earnings'].forEach(id => $(id).innerHTML = id === 'sector-bars' ? none : ''); }
+  else {
+    const early = +((sc.generated || '').slice(11, 13) || 0) < 20;
+    $('scan-desc').textContent = `${sc.date}（美東）${early ? '盤中提前產生，今晚收盤後會更新' : '收盤後產生'}${sc.generated ? '・' + sc.generated : ''}。只是參考資料，可看可不看；選股不限於表內，鼓勵自己找其他產業和題材。`;
+    const maxR = Math.max(1, ...(sc.sectors || []).map(x => Math.abs(x[4] || 0)));
+    $('sector-bars').innerHTML = (sc.sectors || []).map(([sym, name, r1, r5, r20, rel]) => {
+      const w = Math.abs(r20) / maxR * 50, left = r20 >= 0 ? 50 : 50 - w;
+      return `<div class="bar"><div class="lb"><span><b class="num">${esc(sym)}</b> ${esc(name)}</span><span class="num"><span class="${tone(r20)}">${pct(r20, true, 1)}</span> <span class="muted">今日 ${pct(r1, true, 1)}・5 日 ${pct(r5, true, 1)}</span></span></div>
+        <div class="div-track"><div class="zero"></div><div class="seg" style="left:${left}%;width:${w}%;background:${r20 >= 0 ? 'var(--up)' : 'var(--down)'}"></div></div></div>`;
+    }).join('') || none;
+    const mv = (arr, title) => `<div style="font-size:12px;color:var(--text-3);font-weight:700;margin-bottom:4px">${title}</div>` +
+      ((arr || []).map(([t, x]) => `<div class="mv"><b class="num">${esc(t)}</b><span class="num ${tone(x)}">${pct(x, true, 1)}</span></div>`).join('') || '<div class="muted">—</div>');
+    $('gainers').innerHTML = mv(sc.gainers, '▲ 漲幅');
+    $('losers').innerHTML = mv(sc.losers, '▼ 跌幅');
+    const nh = sc.new_highs || [];
+    $('nh-desc').textContent = `${nh.length} 檔，依 20 日相對強弱排序。`;
+    $('new-highs').innerHTML = nh.length ? nh.slice(0, 40).map(t => `<span class="tk-chip">${esc(t)}</span>`).join('') + (nh.length > 40 ? `<span class="muted"> …另 ${nh.length - 40} 檔</span>` : '') : '<div class="muted">今天沒有</div>';
+    const wd = '日一二三四五六';
+    $('earnings').innerHTML = (sc.earnings || []).map(([d, rows, more]) => {
+      const dt = new Date(d + 'T12:00:00');
+      const body = rows == null ? '<span class="muted">資料抓不到</span>' : !rows.length ? '<span class="muted">無</span>'
+        : rows.map(([t, w]) => `<span class="tk-chip">${esc(t)}<small>${esc(w)}</small></span>`).join('') + (more ? `<span class="muted">等另 ${more} 檔</span>` : '');
+      return `<div class="er"><div class="d">${d.slice(5).replace('-', '/')}（${wd[dt.getDay()]}）</div><div>${body}</div></div>`;
+    }).join('') || '<div class="muted">—</div>';
+    $('scan-status').textContent = (sc.status || []).length ? '資料狀態：' + sc.status.join('；') : '';
+  }
   if (!sc || !(sc.themes || []).length) { $('heat').innerHTML = '<tbody><tr><td class="empty" style="text-align:center">今天收盤後會產生第一份掃描</td></tr></tbody>'; $('hot').innerHTML = ''; return; }
   $('heat-desc').textContent = `${sc.date} 收盤後；茂的 14 個族群，20 日相對 SPY 50%、5 日相對 SPY 30%、量能 20%，滿分 100。只是參考，選股不限於表內。`;
   const tr = { '升溫': '<span class="up">▲ 升溫</span>', '降溫': '<span class="down">▼ 降溫</span>', '持平': '<span class="muted">持平</span>', '—': '<span class="muted">首次</span>' };
@@ -836,7 +907,7 @@ function renderPools() {
 }
 
 /* ---------- 分頁 ---------- */
-const TABS = ['overview', 'positions', 'analytics', 'pools', 'trades', 'feed'];
+const TABS = ['overview', 'positions', 'analytics', 'pools', 'scan', 'trades', 'feed'];
 let tab = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : (store.get('arena-tab') || 'overview');
 function setTab(t) {
   tab = TABS.includes(t) ? t : 'overview';
@@ -857,7 +928,7 @@ function wrapCells(id) {
 
 function renderAll() {
   renderHeader(); renderKPIs(); renderBoard(); renderMoves(); renderPositions();
-  renderMetrics(); renderPools(); renderTrades(); renderNotes(); renderEvents(); renderCharts();
+  renderMetrics(); renderPools(); renderScan(); renderTrades(); renderNotes(); renderEvents(); renderCharts();
   ['metrics', 'strategy', 'trades', 'heat'].forEach(wrapCells);
 }
 

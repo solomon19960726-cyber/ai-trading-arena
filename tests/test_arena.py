@@ -71,6 +71,78 @@ class WatchLineParse(unittest.TestCase):
             shutil.rmtree(tmp)
 
 
+class PriceAndCorrections(unittest.TestCase):
+    SPARK = """【Spark】🕒 美東 2026-10-19 11:11 早盤主力決策回報（週一）
+🎯 本次決策行動：【開倉做多 QQQ（部位 POS-002）】
+• 標的代號：QQQ（Invesco QQQ Trust ETF）
+• 方向：LONG（做多買進）
+• 成交股數：4 股（整數股）
+• 成交價格：US$722.41（最新成交價）
+• 買進金額：US$2,889.64（佔帳戶淨值 28.92% ≤ 30% 規範，且 ≤ 可用現金）
+• 停損價（SL）：US$717.00
+• 停利價（TP）：US$734.50
+💼 帳戶即時快照：
+• 總淨值：US$9,991.72（-0.08% / -US$8.28）
+• 可用現金：US$7,102.08（扣除買進成本 US$2,889.64）"""
+
+    def test_price_is_per_share_not_total(self):
+        r = L.parse_message(self.SPARK)
+        self.assertEqual(r['opens'], [{'ticker': 'QQQ', 'side': 'long', 'qty': 4, 'entry': 722.41, 'stop': 717.0, 'target': 734.5}])
+        self.assertEqual((r['cash'], r['equity']), (7102.08, 9991.72))
+
+    def test_price_priority(self):
+        self.assertEqual(L.parse_message('【Muse】成交 AMD｜做多｜10股｜成本 $160｜@150｜停損 140｜停利 170')['opens'][0]['entry'], 150.0)
+        self.assertEqual(L.parse_message('[Muse] 建倉 IWM 20股 進場 220.5 停損 226 停利 210')['opens'][0]['entry'], 220.5)
+        self.assertEqual(L.parse_message('【Muse】做多 GLD 2 股，買進成本 $765，成本價 $382.5，停損 360，停利 420')['opens'][0]['entry'], 382.5)
+
+    def _ext(self, tmp, rec, where='positions'):
+        L.EXT_FILE = os.path.join(tmp, 'ext.json')
+        L.CORR_FILE = os.path.join(tmp, 'corr.json')
+        info = {'cash': 7102.08, 'positions': [], 'trades': []}
+        info[where].append(rec)
+        with open(L.EXT_FILE, 'w', encoding='utf-8') as f:
+            json.dump({'spark': info}, f)
+        with open(L.CORR_FILE, 'w', encoding='utf-8') as f:
+            json.dump({'corrections': [{'id': 'c1', 'agent': 'spark', 'position_id': 'sp1', 'set': {'entry': 722.41}, 'reason': 't'},
+                                       {'id': 'c2', 'agent': 'spark', 'position_id': 'nope', 'set': {'entry': 1}, 'reason': 't'}]}, f)
+
+    def test_corrections_position_once(self):
+        tmp, old = tempfile.mkdtemp(), (L.EXT_FILE, L.CORR_FILE)
+        try:
+            self._ext(tmp, {'id': 'sp1', 'ticker': 'QQQ', 'side': 'long', 'qty': 4, 'entry': 2889.64, 'stop': 717, 'stop0': 717, 'target': 734.5})
+            logs = []
+            self.assertEqual(L.apply_corrections(log=logs.append), ['c1'])
+            with open(L.EXT_FILE, encoding='utf-8') as f:
+                e = json.load(f)['spark']
+            self.assertEqual(e['positions'][0]['entry'], 722.41)
+            self.assertEqual(e['cash'], 7102.08)
+            self.assertTrue(any('找不到' in x for x in logs))
+            self.assertEqual(L.apply_corrections(log=logs.append), [])   # 不重複套用
+        finally:
+            L.EXT_FILE, L.CORR_FILE = old
+            shutil.rmtree(tmp)
+
+    def test_corrections_closed_trade_recomputes_pnl(self):
+        tmp, old = tempfile.mkdtemp(), (L.EXT_FILE, L.CORR_FILE)
+        try:
+            self._ext(tmp, {'id': 'sp1', 'ticker': 'QQQ', 'side': 'long', 'qty': 4, 'entry': 2889.64, 'stop': 717, 'stop0': 717,
+                            'target': 734.5, 'exit': 734.5, 'pnl': -8620.56, 'r_multiple': -1.0}, where='trades')
+            L.apply_corrections(log=lambda m: None)
+            with open(L.EXT_FILE, encoding='utf-8') as f:
+                t = json.load(f)['spark']['trades'][0]
+            self.assertEqual((t['entry'], t['pnl'], t['r_multiple']), (722.41, 48.36, 2.23))
+        finally:
+            L.EXT_FILE, L.CORR_FILE = old
+            shutil.rmtree(tmp)
+
+    def test_repo_correction_file_is_valid(self):
+        with open(os.path.join(os.path.dirname(L.EXT_FILE), 'ext_corrections.json'), encoding='utf-8') as f:
+            items = json.load(f)['corrections']
+        self.assertEqual(len({c['id'] for c in items}), len(items))
+        for c in items:
+            self.assertTrue(c['reason'] and c['set'] and c['agent'] in ('muse', 'spark'))
+
+
 class WatchLineDashboard(unittest.TestCase):
     def test_split_watch(self):
         rest, items = D.split_watch('大盤偏空；本次不動作\n觀察：NVDA 抗跌；MU 記憶體升溫；QQQ\n大盤偏空觀察：科技弱')
@@ -155,6 +227,15 @@ class ScanTest(unittest.TestCase):
             self.assertTrue(any('失敗' in x for x in self.logs))
         finally:
             S.build = orig
+
+    def test_forced_run_before_close_does_not_block_tonight(self):
+        noon = datetime(2026, 10, 19, 12, 0, tzinfo=ET)
+        kw = dict(fetch_hist=lambda t: None, fetch_univ=lambda: ([], 'x'), fetch_earn=lambda d: [], log=self.logs.append)
+        self.assertIsNotNone(S.run(force=True, now=noon, **kw))
+        self.assertFalse(os.path.exists(S.MARK_FILE))
+        self.assertIsNotNone(S.run(now=self.now, **kw))             # 晚上 20:30 照樣跑
+        self.assertEqual(open(S.MARK_FILE, encoding='utf-8').read(), '2026-10-19')
+        self.assertIsNone(S.run(now=self.now + timedelta(minutes=15), **kw))   # 同一晚不重跑
 
     def test_not_due_before_close_or_weekend(self):
         self.assertIsNone(S.run(now=datetime(2026, 10, 19, 15, 0, tzinfo=ET), log=self.logs.append))
