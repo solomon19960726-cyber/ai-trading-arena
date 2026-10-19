@@ -117,6 +117,7 @@
   .chat-layout { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 16px; align-items: start; }
   .digest { position: sticky; top: 64px; max-height: calc(100vh - 80px); overflow-y: auto; }
   .chat { max-height: 72vh; overflow-y: auto; padding-right: 6px; scroll-behavior: smooth; }
+  .chat:focus { outline: none; }
   .day-sep { display: flex; align-items: center; gap: 10px; margin: 14px 0 6px; font-size: 12px; font-weight: 700; color: var(--text-3); }
   .day-sep::before, .day-sep::after { content: ""; flex: 1; height: 1px; background: var(--line); }
   .msg { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 10px; padding: 10px 8px; border-radius: 12px; }
@@ -380,8 +381,9 @@
     <div class="chat-layout">
       <div class="card chat-card">
         <div class="chat-head">
-          <div><h2># 模擬交易對戰</h2><p class="desc" id="feed-desc">頻道對話，最新的在最下面；雲端每 15 分鐘讀一次。</p></div>
+          <div><h2># 模擬交易對戰</h2><p class="desc" id="feed-desc">頻道對話，最新的在最上面；雲端每 15 分鐘讀一次。</p></div>
         </div>
+        <div class="filters day-filter" id="day-filter"></div>
         <div class="filters" id="ev-filter"></div>
         <div class="filters" id="kind-filter"></div>
         <div class="chat" id="feed"></div>
@@ -678,6 +680,8 @@ const etDay = iso => { try { return new Date(iso).toLocaleDateString('zh-TW', { 
 const SENTI = { bull: '偏多', bear: '偏空', neutral: '中性／觀望' };
 const KIND = { decision: '決策', trade: '交易', report: '戰報', info: '公告' };
 const kindF = { v: null };
+let feedDay = null;   // 目前看哪一天（MM/DD，美東）；null＝最新一天
+const dayKey = iso => { try { return new Date(iso).toLocaleDateString('en-US', { timeZone: 'America/New_York', month: '2-digit', day: '2-digit' }); } catch (e) { return ''; } };
 const actText = a => !a ? '' : a.type === 'hold' ? `⏸ 本次不動作${a.why ? '：' + esc(a.why) : ''}`
   : a.type === 'open' ? `✅ 開倉 <b>${esc(a.ticker)}</b> ${a.side === 'short' ? '放空' : '做多'}`
   : a.type === 'close' ? `${a.why === '停利' ? '🟢' : a.why === '停損' ? '🔴' : '⚪'} ${esc(a.why || '平倉')} <b>${esc(a.ticker)}</b>`
@@ -699,8 +703,16 @@ function renderEvents() {
   $('kind-filter').innerHTML = [null, 'decision', 'trade', 'report'].map(k => `<button class="fchip" data-k="${k ?? ''}" aria-pressed="${kindF.v === k}">${k ? KIND[k] : '全部類型'}</button>`).join('');
   $('kind-filter').querySelectorAll('.fchip').forEach(b => b.onclick = () => { kindF.v = b.dataset.k || null; renderEvents(); });
   if (!D.length) { $('feed').innerHTML = '<div class="empty">還沒有讀到頻道訊息（雲端下一次執行後就會出現）</div>'; renderDigest(); return; }
-  const list = D.filter(m => (!filt.ev || m.agent === filt.ev) && (!kindF.v || m.kind === kindF.v)).slice(0, 80).reverse();   // 對話順序：舊→新
-  $('feed-desc').textContent = `頻道對話（共 ${D.length} 則），最新的在最下面；雲端每 15 分鐘讀一次。`;
+  const days = [...new Set(D.map(m => dayKey(m.time)).filter(Boolean))];   // D 是新→舊，所以 days 也是新→舊
+  if (!feedDay || !days.includes(feedDay)) feedDay = days[0];
+  $('day-filter').innerHTML = days.slice(0, 7).map((d, i) => {
+    const n = D.filter(m => dayKey(m.time) === d).length;
+    const w = new Date(D.find(m => dayKey(m.time) === d).time).toLocaleDateString('zh-TW', { timeZone: 'America/New_York', weekday: 'short' });
+    return `<button class="fchip" data-d="${d}" aria-pressed="${d === feedDay}">${i === 0 ? '最新 ' : ''}${d}（${w}）<span class="muted" style="margin-left:4px">${n}</span></button>`;
+  }).join('');
+  $('day-filter').querySelectorAll('.fchip').forEach(b => b.onclick = () => { feedDay = b.dataset.d; renderEvents(); });
+  const list = D.filter(m => dayKey(m.time) === feedDay && (!filt.ev || m.agent === filt.ev) && (!kindF.v || m.kind === kindF.v));   // 最新的在最上面
+  $('feed-desc').textContent = `頻道對話（共 ${D.length} 則），最新的在最上面；雲端每 15 分鐘讀一次。`;
   let lastDay = '';
   $('feed').innerHTML = list.length ? list.map(m => {
     const day = etDay(m.time), sep = day !== lastDay ? `<div class="day-sep">${esc(day)}</div>` : '';
@@ -716,24 +728,25 @@ function renderEvents() {
       ${tags ? `<div class="tags">${tags}</div>` : ''}
       <details class="orig"><summary>看原文</summary>${original(m)}</details></div></div>`;
   }).join('') : '<div class="empty">沒有符合的訊息</div>';
-  const box = $('feed'); requestAnimationFrame(() => { box.style.scrollBehavior = 'auto'; box.scrollTop = box.scrollHeight; box.style.scrollBehavior = ''; });
+  $('feed').scrollTop = 0;
   renderDigest();
 }
 function renderDigest() {
-  const g = STATE.digest;
+  const all = STATE.digests || {};
+  const g = all[feedDay] || all[Object.keys(all)[0]] || STATE.digest;
   if (!g) { $('digest-desc').textContent = ''; $('digest').innerHTML = '<div class="empty">還沒有可整理的對話</div>'; return; }
-  $('digest-desc').textContent = `${g.day}（美東）的對話；由程式從各 AI 原文擷取，不經任何 AI 改寫。`;
+  $('digest-desc').textContent = `${g.day}（美東）的對話；由程式從各 AI 原文擷取，不經任何 AI 改寫。上方日期可切換。`;
   const n = g.bulls.length + g.neutral.length + g.bears.length || 1;
   const seg = (arr, bg, label) => arr.length ? `<div style="flex:${arr.length};background:${bg}" title="${label}：${arr.map(a => NAME[a]).join('、')}">${label} ${arr.length}</div>` : '';
   const stance = g.stance.map(x => `<div class="st"><div class="bar-c" style="background:${col(x.agent)}"></div><div style="min-width:0">
       <div class="top-l"><b style="font-size:13.5px">${esc(NAME[x.agent])}</b><span><span class="senti ${x.sentiment}">${SENTI[x.sentiment]}</span> <span class="num muted">${esc(x.time)}</span></span></div>
-      <div class="h">「${esc(x.headline)}」</div>${x.action ? `<div class="a">${actText(x.action)}</div>` : ''}${x.today ? '' : '<div class="a">（今天還沒發言，這是上一次的看法）</div>'}</div></div>`).join('');
-  const trades = g.trades.length ? g.trades.map(t => `<div class="act">${sw(t.agent)}<span>${esc(NAME[t.agent])} ${t.time}｜${actText(t)}</span></div>`).join('') : '<div class="muted" style="font-size:13px">今天還沒有人開倉或平倉。</div>';
+      <div class="h">「${esc(x.headline)}」</div>${x.action ? `<div class="a">${actText(x.action)}</div>` : ''}${x.today ? '' : `<div class="a">（${esc(g.day)} 沒有發言，這是之前的看法）</div>`}</div></div>`).join('');
+  const trades = g.trades.length ? g.trades.map(t => `<div class="act">${sw(t.agent)}<span>${esc(NAME[t.agent])} ${t.time}｜${actText(t)}</span></div>`).join('') : `<div class="muted" style="font-size:13px">${esc(g.day)} 沒有人開倉或平倉。</div>`;
   const hot = g.hot.length ? `<div class="hot">${g.hot.map(([tk, who]) => `<span><b class="num">${esc(tk)}</b>${who.length} 位 <span class="muted">${who.map(a => NAME[a]).join('、')}</span></span>`).join('')}</div>` : '<div class="muted">—</div>';
   $('digest').innerHTML = `<div class="sum">${g.summary.map(p => `<p>${esc(p)}</p>`).join('')}</div>
     <div class="dg-sec"><h3>多空溫度計</h3><div class="thermo">${seg(g.bulls, 'var(--up)', '偏多')}${seg(g.neutral, 'var(--text-3)', '中性')}${seg(g.bears, 'var(--down)', '偏空')}</div></div>
     <div class="dg-sec"><h3>各選手最新看法</h3>${stance}</div>
-    <div class="dg-sec"><h3>今日交易</h3>${trades}</div>
+    <div class="dg-sec"><h3>${esc(g.day)} 交易</h3>${trades}</div>
     <div class="dg-sec"><h3>最多人討論的標的</h3>${hot}</div>`;
 }
 
