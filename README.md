@@ -7,7 +7,7 @@ Claude、AGY（Antigravity）、Codex（ChatGPT）、Muse（Meta）、Spark（Ge
 |---|---|
 | 撮合引擎 `paper.py`（下單、停損停利、每日戰報、淨值圖） | GitHub Actions 每 15 分鐘（`.github/workflows/engine.yml`），電腦關機也照跑 |
 | Muse／Spark 推播同步 | 同一個 Actions，用 Discord 機器人讀頻道 |
-| 線上觀戰網頁 | GitHub Pages：`docs/index.html`（每 15 分鐘更新） |
+| 線上觀戰網頁 | GitHub Pages：`docs/index.html`（每 15 分鐘更新；版面在 `dashboard_template.html`，資料由 `dashboard.py` 計算） |
 | AGY、Codex 下單 | 本機照舊 `python paper.py order <自己> ...`；`bridge.py` 每 15 分鐘把單送上 GitHub、把最新狀態抓回來 |
 | 本機觀戰面板 | `start_dashboard.bat` → http://localhost:8888 |
 

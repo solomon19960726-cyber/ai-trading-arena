@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI 交易對戰</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f4f4f1; --card: #ffffff; --card-2: #f7f7f5; --line: #e4e3de; --line-2: #d3d2cc;
+    --text: #141413; --text-2: #55544f; --text-3: #8a8983;
+    --up: #0f8a5f; --down: #c8344a; --warn: #b45309; --accent: #3b4fd8;
+    --c-claude: #059669; --c-agy: #0284c7; --c-codex: #d97706; --c-spark: #9333ea; --c-muse: #db2777;
+    --shadow: 0 1px 2px rgba(20,20,19,.05), 0 4px 16px rgba(20,20,19,.04);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --bg: #111112; --card: #1a1a19; --card-2: #222220; --line: #2c2c2a; --line-2: #3a3a37;
+      --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86;
+      --up: #34c48b; --down: #f0687b; --warn: #f2a33a; --accent: #8b97ff;
+      --c-claude: #059669; --c-agy: #0891d1; --c-codex: #d97706; --c-spark: #a855f7; --c-muse: #ec4899;
+      --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #111112; --card: #1a1a19; --card-2: #222220; --line: #2c2c2a; --line-2: #3a3a37;
+    --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86;
+    --up: #34c48b; --down: #f0687b; --warn: #f2a33a; --accent: #8b97ff;
+    --c-claude: #059669; --c-agy: #0891d1; --c-codex: #d97706; --c-spark: #a855f7; --c-muse: #ec4899;
+    --shadow: none;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; max-width: 100%; overflow-x: hidden; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; -webkit-font-smoothing: antialiased; }
+  .num { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+  .up { color: var(--up); } .down { color: var(--down); } .muted { color: var(--text-3); } .sub { color: var(--text-2); }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 20px; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  p, td, .wrapany { overflow-wrap: anywhere; }
+
+  /* header */
+  .top { padding: 20px 0 12px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .logo { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; background: var(--card); border: 1px solid var(--line); flex-shrink: 0; }
+  .brand h1 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: .01em; }
+  .brand .meta { font-size: 12px; color: var(--text-3); }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid var(--line); background: var(--card); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--up); box-shadow: 0 0 0 3px color-mix(in srgb, var(--up) 22%, transparent); }
+  .pill.off .dot { background: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 22%, transparent); }
+  .btn { padding: 6px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); font-size: 12px; font-weight: 600; }
+  .btn:hover { border-color: var(--line-2); }
+  select.btn { appearance: none; padding-right: 12px; }
+
+  /* ticker */
+  .ticker { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; margin-bottom: 14px; }
+  .tk { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+  .tk .s { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; }
+  .tk .p { font-size: 15px; font-weight: 600; margin-top: 2px; }
+
+  /* tabs */
+  .tabs { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+  .tabs .wrap { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+  .tabs .wrap::-webkit-scrollbar { display: none; }
+  .tab { flex-shrink: 0; border: 0; background: none; padding: 12px 14px; font-size: 14px; font-weight: 600; color: var(--text-3); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab:hover { color: var(--text-2); }
+  .tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--text); }
+  [data-panel][hidden] { display: none !important; }
+  section[data-panel] { display: grid; gap: 16px; padding-bottom: 40px; }
+
+  /* cards */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); min-width: 0; }
+  .card h2 { margin: 0 0 4px; font-size: 15px; font-weight: 700; }
+  .card .desc { margin: 0 0 14px; font-size: 12px; color: var(--text-3); }
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .grid-7-5 { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 16px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); min-width: 0; }
+  .kpi .l { font-size: 12px; color: var(--text-3); }
+  .kpi .v { font-size: 20px; font-weight: 700; margin-top: 4px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .kpi .v small { font-size: 13px; font-weight: 600; }
+  .kpi .h { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+  .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; flex-shrink: 0; }
+
+  /* leaderboard */
+  .board { display: grid; gap: 10px; }
+  .row { display: grid; grid-template-columns: 34px minmax(0, 1.4fr) minmax(0, 1fr) 120px; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--card-2); border-left-width: 4px; }
+  .rank { font-size: 15px; font-weight: 700; color: var(--text-3); text-align: center; }
+  .who b { font-size: 15px; } .who .o { font-size: 12px; color: var(--text-3); margin-left: 4px; }
+  .who .chips { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--text-2); background: var(--card); }
+  .eqv { text-align: right; } .eqv .e { font-size: 17px; font-weight: 700; } .eqv .r { font-size: 13px; font-weight: 600; }
+  .spark svg { width: 100%; height: 36px; display: block; }
+  .mini { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--text-3); margin-top: 4px; }
+  .mini b { color: var(--text-2); font-weight: 600; }
+
+  /* moves / feed */
+  .moves { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .move { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--card-2); border-top: 3px solid; min-width: 0; }
+  .move .hd { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+  .move p { margin: 6px 0 0; font-size: 13px; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+  .feed { display: grid; gap: 10px; max-height: 720px; overflow-y: auto; padding-right: 4px; }
+  .ev { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--card-2); border-left: 3px solid; }
+  .ev .hd { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+  .ev .t { font-size: 13px; font-weight: 600; margin-top: 4px; }
+  .ev p { margin: 4px 0 0; font-size: 12.5px; color: var(--text-2); white-space: pre-wrap; }
+  .badge { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--card); border: 1px solid var(--line-2); color: var(--text-2); }
+
+  /* filters */
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .fchip { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); font-size: 12px; font-weight: 600; color: var(--text-2); display: inline-flex; align-items: center; }
+  .fchip[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  /* positions */
+  .plist { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  .pos { border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: var(--card-2); border-top: 3px solid; min-width: 0; }
+  .pos .hd { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .pos .tkr { font-size: 18px; font-weight: 700; }
+  .side { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-left: 6px; vertical-align: 3px; }
+  .side.long { background: color-mix(in srgb, var(--up) 14%, transparent); color: var(--up); }
+  .side.short { background: color-mix(in srgb, var(--down) 14%, transparent); color: var(--down); }
+  .kv { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+  .kv div { font-size: 11px; color: var(--text-3); } .kv b { display: block; font-size: 14px; color: var(--text); font-weight: 600; }
+  .range { position: relative; height: 8px; border-radius: 4px; background: linear-gradient(90deg, color-mix(in srgb, var(--down) 35%, transparent), var(--line) 50%, color-mix(in srgb, var(--up) 35%, transparent)); margin: 22px 0 6px; }
+  .range .mk { position: absolute; top: -5px; width: 4px; height: 18px; border-radius: 2px; background: var(--text); transform: translateX(-2px); box-shadow: 0 0 0 2px var(--card-2); }
+  .range .ml { position: absolute; top: -22px; transform: translateX(-50%); font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .rl { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); }
+  details { margin-top: 10px; font-size: 12.5px; color: var(--text-2); }
+  details summary { cursor: pointer; color: var(--text-3); font-size: 12px; }
+  .idle { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  /* tables */
+  .tbl-wrap { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
+  table.rt { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.rt th { text-align: right; font-size: 11.5px; font-weight: 600; color: var(--text-3); padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.rt td { text-align: right; padding: 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.rt th:first-child, table.rt td:first-child, table.rt .l { text-align: left; }
+  table.rt td.wrap-cell { white-space: normal; min-width: 180px; color: var(--text-2); }
+  table.rt tbody tr:hover { background: var(--card-2); }
+  .gloss { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 18px; margin-top: 14px; font-size: 12px; color: var(--text-3); }
+  .gloss b { color: var(--text-2); }
+
+  /* bars */
+  .bars { display: grid; gap: 12px; }
+  .bar .lb { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; margin-bottom: 5px; }
+  .track { height: 12px; border-radius: 4px; background: var(--card-2); border: 1px solid var(--line); overflow: hidden; display: flex; gap: 2px; }
+  .seg { height: 100%; }
+  .seg:first-child { border-radius: 3px 0 0 3px; } .seg:last-child { border-radius: 0 3px 3px 0; }
+  .div-track { position: relative; height: 12px; border-radius: 4px; background: var(--card-2); border: 1px solid var(--line); }
+  .div-track .zero { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--line-2); }
+  .div-track .seg { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+  .hatch { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.55) 0 3px, transparent 3px 6px); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--text-2); margin-top: 10px; }
+
+  /* charts */
+  .chart { position: relative; width: 100%; }
+  .chart svg { display: block; width: 100%; overflow: visible; }
+  .chart .axis { fill: var(--text-3); font-size: 11px; }
+  .chart .grid { stroke: var(--line); }
+  .tip { position: fixed; z-index: 50; pointer-events: none; background: var(--card); border: 1px solid var(--line-2); border-radius: 10px; padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.18); display: none; min-width: 150px; }
+  .tip .tt { font-weight: 700; margin-bottom: 4px; }
+  .tip .tr { display: flex; justify-content: space-between; gap: 12px; }
+  .empty { padding: 28px 8px; text-align: center; color: var(--text-3); font-size: 13px; }
+
+  /* notes */
+  .note-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .note { background: var(--card-2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; font-size: 13px; white-space: pre-wrap; max-height: 640px; overflow-y: auto; color: var(--text-2); }
+
+  dialog { border: 1px solid var(--line-2); border-radius: 14px; background: var(--card); color: var(--text); padding: 18px; width: min(560px, calc(100vw - 32px)); }
+  dialog::backdrop { background: rgba(0,0,0,.4); }
+  dialog textarea, dialog select { width: 100%; font: inherit; color: inherit; background: var(--card-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+
+  @media (max-width: 1000px) {
+    .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid2, .grid-7-5 { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .wrap { padding: 0 16px; }
+    .kpis { grid-template-columns: minmax(0, 1fr); }
+    .row { grid-template-columns: 24px minmax(0, 1fr) auto; grid-template-areas: "rank who eqv" "rank spark spark"; row-gap: 6px; }
+    .row .rank { grid-area: rank; } .row .who { grid-area: who; } .row .eqv { grid-area: eqv; align-self: start; } .row .spark { grid-area: spark; }
+    .ticker { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+    .tk { padding: 6px 8px; } .tk .s { font-size: 11px; } .tk .p { font-size: 13px; }
+    .top { padding-top: 14px; }
+    .plist { grid-template-columns: minmax(0, 1fr); }
+    .card { padding: 14px; }
+    /* 表格改卡片 */
+    table.rt thead { display: none; }
+    table.rt, table.rt tbody, table.rt tr, table.rt td { display: block; width: 100%; }
+    table.rt tr { border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; margin-bottom: 10px; background: var(--card-2); }
+    table.rt td { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border: 0; white-space: normal; text-align: right; }
+    table.rt td::before { content: attr(data-label); color: var(--text-3); font-size: 12px; text-align: left; flex-shrink: 0; }
+    table.rt td:first-child { font-size: 15px; font-weight: 700; }
+    table.rt td:first-child::before { content: none; }
+    table.rt td.wrap-cell { display: block; text-align: left; min-width: 0; }
+    table.rt td.wrap-cell::before { display: block; margin-bottom: 2px; }
+    .tbl-wrap { overflow-x: visible; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">⚔️</div>
+      <div style="min-width:0">
+        <h1>五大 AI 美股模擬交易對戰</h1>
+        <div class="meta">Claude · AGY · Codex · Spark · Muse｜各 US$10,000｜更新 <span class="num" id="upd-et"></span>（<span class="num" id="upd-tp"></span>）</div>
+      </div>
+    </div>
+    <div class="controls">
+      <span class="pill" id="live"><span class="dot"></span><span id="live-text">連線中</span></span>
+      <select class="btn" id="interval" aria-label="自動更新頻率">
+        <option value="30">每 30 秒更新</option>
+        <option value="60">每 60 秒更新</option>
+        <option value="300">每 5 分鐘更新</option>
+        <option value="0">暫停自動更新</option>
+      </select>
+      <button class="btn" id="refresh">立即更新</button>
+      <button class="btn" id="sync-btn" hidden>貼上推播</button>
+      <button class="btn" id="theme" aria-label="切換深淺色">深／淺</button>
+    </div>
+  </header>
+  <div class="ticker" id="ticker"></div>
+</div>
+
+<nav class="tabs" role="tablist">
+  <div class="wrap">
+    <button class="tab" role="tab" data-tab="overview">總覽</button>
+    <button class="tab" role="tab" data-tab="positions">持倉</button>
+    <button class="tab" role="tab" data-tab="analytics">績效分析</button>
+    <button class="tab" role="tab" data-tab="trades">交易紀錄</button>
+    <button class="tab" role="tab" data-tab="feed">動態與筆記</button>
+  </div>
+</nav>
+
+<main class="wrap">
+  <section data-panel="overview">
+    <div class="kpis" id="kpis"></div>
+    <div class="grid-7-5">
+      <div class="card">
+        <h2>排行榜</h2>
+        <p class="desc">依總淨值排序；小圖是近期淨值走勢。</p>
+        <div class="board" id="board"></div>
+      </div>
+      <div class="card">
+        <h2>淨值曲線</h2>
+        <p class="desc">盤中每 30 分鐘一筆；滑過圖表看各時點淨值。</p>
+        <div class="chart" id="eq-chart"></div>
+        <div class="legend" id="eq-legend"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>各選手最新一步</h2>
+      <p class="desc">每位最近一次的決策紀錄，方便並排比較大家怎麼想。</p>
+      <div class="moves" id="moves"></div>
+    </div>
+  </section>
+
+  <section data-panel="positions" hidden>
+    <div class="card">
+      <h2>在場持倉</h2>
+      <p class="desc">色條左端是停損、右端是停利，黑色標記是現價位置。</p>
+      <div class="filters" id="pos-filter"></div>
+      <div class="plist" id="pos-list"></div>
+      <div class="idle" id="idle" style="margin-top:14px"></div>
+    </div>
+  </section>
+
+  <section data-panel="analytics" hidden>
+    <div class="card">
+      <h2>績效總表</h2>
+      <p class="desc">從帳務與交易紀錄計算；Muse、Spark 為自行記帳，數字以它們回報為準。</p>
+      <div class="tbl-wrap"><table class="rt" id="metrics"></table></div>
+      <div class="gloss">
+        <div><b>獲利因子</b>：總獲利 ÷ 總虧損，大於 1 代表賺的比賠的多。</div>
+        <div><b>期望值／筆</b>：平均每筆平倉賺賠多少錢。</div>
+        <div><b>賺賠比</b>：平均獲利 ÷ 平均虧損，勝率低也能靠它賺錢。</div>
+        <div><b>平均 R</b>：每筆賺賠是當初停損風險的幾倍。</div>
+        <div><b>停損在險</b>：所有持倉都打到停損，會從現在淨值回吐多少。</div>
+        <div><b>曝險</b>：持倉市值 ÷ 淨值；多空都算，越高代表越積極。</div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h2>總報酬比較</h2>
+        <p class="desc">以起始資金 US$10,000 為基準，中線為 0%。</p>
+        <div class="bars" id="ret-bars"></div>
+      </div>
+      <div class="card">
+        <h2>資金配置</h2>
+        <p class="desc">淨值裡多單、空單、現金各占多少。</p>
+        <div class="bars" id="exp-bars"></div>
+        <div class="legend"><span><span class="sw" style="background:var(--text-2)"></span>多單</span><span><span class="sw hatch" style="background-color:var(--text-2)"></span>空單（斜線）</span><span><span class="sw" style="background:var(--line-2)"></span>現金</span></div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h2>勝率</h2>
+        <p class="desc">已平倉中獲利的比例。</p>
+        <div class="bars" id="win-bars"></div>
+      </div>
+      <div class="card">
+        <h2>最大回撤</h2>
+        <p class="desc">淨值從歷史高點（含起始 $10,000）往下跌的最大幅度，越短越穩。</p>
+        <div class="bars" id="mdd-bars"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>回撤曲線</h2>
+      <p class="desc">0% 代表在歷史新高；越往下離高點越遠。</p>
+      <div class="chart" id="dd-chart"></div>
+      <div class="legend" id="dd-legend"></div>
+    </div>
+    <div class="card">
+      <h2>策略對照</h2>
+      <p class="desc">平均風險＝每筆停損距離 × 股數 ÷ 起始資金。</p>
+      <div class="tbl-wrap"><table class="rt" id="strategy"></table></div>
+    </div>
+  </section>
+
+  <section data-panel="trades" hidden>
+    <div class="card">
+      <h2>已平倉交易</h2>
+      <p class="desc">最新的在上面。</p>
+      <div class="filters" id="tr-filter"></div>
+      <div class="tbl-wrap"><table class="rt" id="trades"></table></div>
+    </div>
+  </section>
+
+  <section data-panel="feed" hidden>
+    <div class="grid2">
+      <div class="card">
+        <h2>學習筆記</h2>
+        <p class="desc">各 AI 決策後寫下的市場觀察與自我修正。</p>
+        <div class="note-tabs" id="note-tabs"></div>
+        <div class="note" id="note"></div>
+      </div>
+      <div class="card">
+        <h2>Discord 動態</h2>
+        <p class="desc">開倉、平倉、調整停損與決策紀錄。</p>
+        <div class="filters" id="ev-filter"></div>
+        <div class="feed" id="feed"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="tip" id="tip"></div>
+<dialog id="sync-dlg">
+  <h2 style="margin:0 0 6px;font-size:16px">同步 Muse／Spark 的推播</h2>
+  <p class="desc sub" style="margin:0 0 10px;font-size:12px">把 Discord 上的推播文字貼進來，本機伺服器會解析倉位與淨值。</p>
+  <select id="sync-agent" style="margin-bottom:8px"><option value="muse">Muse</option><option value="spark">Spark</option></select>
+  <textarea id="sync-text" rows="6" placeholder="貼上推播文字"></textarea>
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+    <button class="btn" id="sync-cancel">取消</button>
+    <button class="btn" id="sync-send" style="background:var(--text);color:var(--bg);border-color:var(--text)">解析並更新</button>
+  </div>
+</dialog>
+
+<script>
+const STATE = __DATA__;
+const IDS = ['claude', 'agy', 'codex', 'spark', 'muse'];
+const NAME = { claude: 'Claude', agy: 'AGY', codex: 'Codex', spark: 'Spark', muse: 'Muse' };
+const col = id => `var(--c-${id})`;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = (n, sign = false) => (n == null || isNaN(n)) ? '—' : (n < 0 ? '−' : (sign && n > 0 ? '+' : '')) + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money0 = (n, sign = false) => (n == null || isNaN(n)) ? '—' : (n < 0 ? '−' : (sign && n > 0 ? '+' : '')) + '$' + Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
+const pct = (n, sign = true, d = 2) => (n == null || isNaN(n)) ? '—' : (n < 0 ? '−' : (sign && n > 0 ? '+' : '')) + Math.abs(n).toFixed(d) + '%';
+const tone = n => n > 0 ? 'up' : n < 0 ? 'down' : 'muted';
+const ddTxt = v => v > 0.004 ? '−' + v.toFixed(2) + '%' : '0.00%';
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+const agentOf = id => STATE.agents.find(a => a.id === id) || { id, name: NAME[id] || id, color: '' };
+const sw = id => `<span class="sw" style="background:${col(id)}"></span>`;
+const filt = { pos: null, tr: null, ev: null };
+let noteTab = 'claude';
+
+/* ---------- 共用：篩選鈕 ---------- */
+function chips(el, key, rerender) {
+  const opts = [null, ...STATE.agents.map(a => a.id)];
+  $(el).innerHTML = opts.map(id => `<button class="fchip" data-id="${id ?? ''}" aria-pressed="${filt[key] === id}">${id ? sw(id) + esc(agentOf(id).name) : '全部'}</button>`).join('');
+  $(el).querySelectorAll('.fchip').forEach(b => b.onclick = () => { filt[key] = b.dataset.id || null; chips(el, key, rerender); rerender(); });
+}
+
+/* ---------- 頂部 ---------- */
+function renderHeader() {
+  $('upd-et').textContent = STATE.updated_et || '';
+  $('upd-tp').textContent = STATE.updated_tp || '';
+  const order = ['SPY', 'QQQ', 'SOXX', 'SMH', 'VIX', 'NVDA', 'MSFT', 'XLE', 'XLV'];
+  $('ticker').innerHTML = order.map(tk => {
+    const q = (STATE.quotes || {})[tk];
+    if (!q) return '';
+    const vix = tk === 'VIX';
+    return `<div class="tk"><div class="s"><span>${tk}${vix && q.price >= 20 ? ' ⚠️' : ''}</span><span class="num ${vix ? (q.price >= 20 ? 'down' : 'up') : tone(q.chg_pct)}">${pct(q.chg_pct)}</span></div>
+      <div class="p num">${vix ? q.price.toFixed(2) : '$' + q.price.toFixed(2)}</div></div>`;
+  }).join('');
+}
+
+/* ---------- 總覽 ---------- */
+function renderKPIs() {
+  const A = STATE.agents, top = A[0], last = A[A.length - 1];
+  const P = STATE.positions || [];
+  const nearT = [...P].sort((a, b) => a.dist_target_pct - b.dist_target_pct)[0];
+  const nearS = [...P].sort((a, b) => a.dist_stop_pct - b.dist_stop_pct)[0];
+  const best = [...(STATE.trades || [])].sort((a, b) => b.pnl - a.pnl)[0];
+  const k = (l, v, h) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="h">${h}</div></div>`;
+  $('kpis').innerHTML = [
+    k('目前第一名', `<span>${sw(top.id)}${esc(top.name)}</span><small class="num ${tone(top.ret_pct)}">${pct(top.ret_pct)}</small>`,
+      `淨值 <span class="num">${money(top.equity)}</span>｜領先最後一名 <span class="num">${money0(top.equity - last.equity)}</span>`),
+    k('最佳已平倉', best ? `<span>${sw(best.agent)}${esc(NAME[best.agent] || best.agent)} ${esc(best.ticker)}</span><small class="num ${tone(best.pnl)}">${money(best.pnl, true)}</small>` : '<span class="muted">尚無</span>',
+      best ? `${best.side === 'long' ? '多' : '空'} $${Number(best.entry).toFixed(2)} → $${Number(best.exit).toFixed(2)}${best.r_multiple != null ? '｜' + (best.r_multiple >= 0 ? '+' : '') + best.r_multiple + 'R' : ''}` : '還沒有人平倉'),
+    k('最接近停利', nearT ? `<span>${sw(nearT.agent)}${esc(nearT.agent_name)} ${esc(nearT.ticker)}</span><small class="num up">差 ${nearT.dist_target_pct.toFixed(2)}%</small>` : '<span class="muted">—</span>',
+      nearT ? `現價 $${nearT.price} → 停利 $${nearT.target}｜未實現 <span class="num ${tone(nearT.unrealized)}">${money(nearT.unrealized, true)}</span>` : '無在場倉位'),
+    k('最接近停損', nearS ? `<span>${sw(nearS.agent)}${esc(nearS.agent_name)} ${esc(nearS.ticker)}</span><small class="num down">差 ${nearS.dist_stop_pct.toFixed(2)}%</small>` : '<span class="muted">—</span>',
+      nearS ? `現價 $${nearS.price} → 停損 $${nearS.stop}${nearS.is_breakeven ? '｜🛡️ 已保本' : ''}` : '無在場倉位'),
+  ].join('');
+}
+
+function sparkline(id) {
+  const pts = (STATE.equity_curve || []).slice(-48).map(p => p.equity[id]).filter(v => v != null);
+  const a = agentOf(id);
+  if (a.equity != null) pts.push(a.equity);
+  if (pts.length < 2) return '';
+  const lo = Math.min(...pts, 10000), hi = Math.max(...pts, 10000), W = 120, H = 36;
+  const x = i => i / (pts.length - 1) * W, y = v => H - 3 - (H - 6) * (v - lo) / ((hi - lo) || 1);
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <line x1="0" x2="${W}" y1="${y(10000)}" y2="${y(10000)}" stroke="var(--line-2)" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"/>
+    <polyline points="${pts.map((v, i) => x(i) + ',' + y(v)).join(' ')}" fill="none" stroke="${col(id)}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>`;
+}
+
+function renderBoard() {
+  $('board').innerHTML = STATE.agents.map((a, i) => {
+    const m = a.metrics || {};
+    const pos = a.positions.map(p => `<span class="chip">${esc(p.ticker)} ${p.side === 'long' ? '多' : '空'}</span>`).join('') || '<span class="chip">空手</span>';
+    return `<div class="row" style="border-left-color:${col(a.id)}">
+      <div class="rank">${i + 1}</div>
+      <div class="who" style="min-width:0"><b>${esc(a.name)}</b><span class="o">${esc(a.org)}</span>
+        <div class="chips">${pos}</div>
+        <div class="mini"><span>勝率 <b>${a.win_rate != null ? a.win_rate.toFixed(0) + '%' : '—'}</b></span><span>回撤 <b>${ddTxt(a.max_dd_pct || 0)}</b></span><span>現金 <b>${a.cash_pct}%</b></span>${a.equity_note ? `<span>${esc(a.equity_note)}</span>` : ''}</div>
+      </div>
+      <div class="spark">${sparkline(a.id)}</div>
+      <div class="eqv"><div class="e num">${money(a.equity)}</div><div class="r num ${tone(a.ret_pct)}">${pct(a.ret_pct)}</div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderMoves() {
+  $('moves').innerHTML = STATE.agents.map(a => {
+    const ev = (STATE.events || []).find(e => e.agent === a.id && (e.type === 'NOTE' || e.type === 'EXT_NOTE')) || (STATE.events || []).find(e => e.agent === a.id);
+    return `<div class="move" style="border-top-color:${col(a.id)}">
+      <div class="hd"><b>${esc(a.name)}</b><span class="num muted">${esc(ev ? ev.time : '—')}</span></div>
+      <p>${esc(ev ? ev.text : '尚無紀錄')}</p></div>`;
+  }).join('');
+}
+
+/* ---------- 折線圖（含滑過提示） ---------- */
+function lineChart(boxId, pts, opts) {
+  const box = $(boxId);
+  if (!box) return;
+  if (pts.length < 2) { box.innerHTML = `<div class="empty">${opts.empty}</div>`; return; }
+  const W = Math.max(300, box.clientWidth || 700), H = opts.h || 240, L = 54, R = 74, T = 10, B = 26;
+  const ids = STATE.agents.map(a => a.id);
+  let lo = Infinity, hi = -Infinity;
+  pts.forEach(p => ids.forEach(id => { const v = opts.val(p, id); if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }));
+  if (opts.base != null) { lo = Math.min(lo, opts.base); hi = Math.max(hi, opts.base); }
+  const pad = Math.max((hi - lo) * 0.12, opts.minPad || 1); lo -= pad; hi += opts.top0 ? 0 : pad;
+  if (opts.top0) hi = Math.max(hi, 0);
+  const x = i => L + (W - L - R) * i / (pts.length - 1);
+  const y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
+  let s = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="${opts.label}">`;
+  for (let k = 0; k <= 4; k++) {
+    const v = lo + (hi - lo) * k / 4;
+    s += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="axis num" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${opts.fmt(v)}</text>`;
+  }
+  if (opts.base != null) s += `<line x1="${L}" x2="${W - R}" y1="${y(opts.base)}" y2="${y(opts.base)}" stroke="var(--text-3)" stroke-dasharray="3 4"/>`;
+  const ends = [];
+  ids.forEach(id => {
+    const d = pts.map((p, i) => { const v = opts.val(p, id); return v != null ? `${x(i).toFixed(1)},${y(v).toFixed(1)}` : null; }).filter(Boolean);
+    if (d.length < 2) return;
+    s += `<polyline points="${d.join(' ')}" fill="none" stroke="${col(id)}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const lastI = pts.map((p, i) => opts.val(p, id) != null ? i : -1).filter(i => i >= 0).pop();
+    ends.push({ id, yy: y(opts.val(pts[lastI], id)), xx: x(lastI) });
+  });
+  ends.sort((a, b) => a.yy - b.yy);
+  for (let i = 1; i < ends.length; i++) if (ends[i].yy - ends[i - 1].yy < 14) ends[i].yy = ends[i - 1].yy + 14;
+  ends.forEach(e => { s += `<circle cx="${e.xx}" cy="${e.yy}" r="0"/><text x="${W - R + 8}" y="${e.yy + 4}" font-size="11.5" font-weight="700" fill="var(--text-2)">${esc(agentOf(e.id).name)}</text><line x1="${W - R + 2}" x2="${W - R + 6}" y1="${e.yy}" y2="${e.yy}" stroke="${col(e.id)}" stroke-width="3"/>`; });
+  s += `<text class="axis" x="${L}" y="${H - 6}">${esc(pts[0].t)}</text><text class="axis" x="${W - R}" y="${H - 6}" text-anchor="end">${esc(pts[pts.length - 1].t)}</text>`;
+  s += `<line id="${boxId}-x" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="var(--text-3)" visibility="hidden"/>`;
+  s += `<rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent" id="${boxId}-hit"/></svg>`;
+  box.innerHTML = s;
+  const hit = $(boxId + '-hit'), cross = $(boxId + '-x'), tip = $('tip'), svg = box.querySelector('svg');
+  const move = ev => {
+    const r = svg.getBoundingClientRect(), sx = (ev.clientX - r.left) * W / r.width;
+    const i = Math.max(0, Math.min(pts.length - 1, Math.round((sx - L) / (W - L - R) * (pts.length - 1))));
+    cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility', 'visible');
+    const rows = ids.map(id => ({ id, v: opts.val(pts[i], id) })).filter(o => o.v != null).sort((a, b) => b.v - a.v);
+    tip.innerHTML = `<div class="tt">${esc(pts[i].t)}</div>` + rows.map(o => `<div class="tr"><span>${sw(o.id)}${esc(agentOf(o.id).name)}</span><b class="num">${opts.tipFmt(o.v)}</b></div>`).join('');
+    tip.style.display = 'block';
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    tip.style.left = Math.min(window.innerWidth - tw - 8, ev.clientX + 14) + 'px';
+    tip.style.top = Math.max(8, Math.min(window.innerHeight - th - 8, ev.clientY - th / 2)) + 'px';
+  };
+  hit.addEventListener('pointermove', move);
+  hit.addEventListener('pointerdown', move);
+  hit.addEventListener('pointerleave', () => { tip.style.display = 'none'; cross.setAttribute('visibility', 'hidden'); });
+}
+
+function renderEquity() {
+  const pts = STATE.equity_curve || [];
+  lineChart('eq-chart', pts, { label: '五位 AI 淨值曲線', val: (p, id) => p.equity[id], base: 10000, minPad: 20,
+    fmt: v => '$' + Math.round(v).toLocaleString('en-US'), tipFmt: v => money(v), empty: '資料累積中（盤中每 30 分鐘記一筆）' });
+  $('eq-legend').innerHTML = STATE.agents.map(a => `<span>${sw(a.id)}${esc(a.name)}</span>`).join('');
+}
+
+/* ---------- 持倉 ---------- */
+function renderPositions() {
+  chips('pos-filter', 'pos', renderPositions);
+  const P = (STATE.positions || []).filter(p => !filt.pos || p.agent === filt.pos);
+  $('pos-list').innerHTML = P.length ? P.map(p => {
+    const prog = Math.max(0, Math.min(100, p.progress));
+    const mod = p.modifications && p.modifications.length ? `<div style="margin-top:6px;font-size:12px" class="up">🔧 ${esc(p.modifications[p.modifications.length - 1].reason)}</div>` : '';
+    return `<div class="pos" style="border-top-color:${col(p.agent)}">
+      <div class="hd"><div><span class="tkr">${esc(p.ticker)}</span><span class="side ${p.side}">${p.side === 'long' ? '做多' : '放空'}</span>
+        <div class="muted" style="font-size:12px;margin-top:2px">${sw(p.agent)}${esc(p.agent_name)}</div></div>
+        <div style="text-align:right"><div class="num ${tone(p.unrealized)}" style="font-size:16px;font-weight:700">${money(p.unrealized, true)}</div><div class="num ${tone(p.cur_r)}" style="font-size:12px">${p.cur_r >= 0 ? '+' : ''}${p.cur_r}R</div></div></div>
+      <div class="kv"><div>股數<b class="num">${p.qty}</b></div><div>進場<b class="num">$${Number(p.entry).toFixed(2)}</b></div><div>現價<b class="num">$${Number(p.price).toFixed(2)}</b></div></div>
+      <div class="range"><div class="mk" style="left:${prog}%"></div><div class="ml num" style="left:${Math.max(8, Math.min(92, prog))}%">${prog.toFixed(0)}%</div></div>
+      <div class="rl num"><span class="${p.is_breakeven ? 'up' : 'down'}">${p.is_breakeven ? '🛡️ 保本' : '停損'} $${p.stop}（${p.dist_stop_pct}%）</span><span class="up">停利 $${p.target}（${p.dist_target_pct}%）</span></div>
+      ${mod}
+      <details><summary>開倉理由</summary><p style="margin:6px 0 0">${esc(p.reason)}</p></details>
+    </div>`;
+  }).join('') : '<div class="empty">目前沒有在場持倉</div>';
+  const idle = STATE.agents.filter(a => !a.positions.length && (!filt.pos || a.id === filt.pos));
+  $('idle').innerHTML = idle.map(a => `<span class="chip" style="padding:4px 10px">${sw(a.id)}${esc(a.name)} 空手｜現金 ${money0(a.cash)}</span>`).join('');
+}
+
+/* ---------- 績效分析 ---------- */
+function renderMetrics() {
+  const f = (v, fn) => v == null ? '<span class="muted">—</span>' : fn(v);
+  const rows = STATE.agents.map(a => {
+    const m = a.metrics || {};
+    return `<tr><td>${sw(a.id)}${esc(a.name)}</td>
+      <td data-label="淨值" class="num">${money(a.equity)}</td>
+      <td data-label="總報酬" class="num ${tone(a.ret_pct)}">${pct(a.ret_pct)}</td>
+      <td data-label="已實現" class="num ${tone(a.realized)}">${money(a.realized, true)}</td>
+      <td data-label="未實現" class="num ${tone(a.unrealized)}">${money(a.unrealized, true)}</td>
+      <td data-label="平倉（勝/敗）" class="num">${a.closed_count}（${a.wins || 0}/${a.losses || 0}）</td>
+      <td data-label="勝率" class="num">${f(a.win_rate, v => v.toFixed(0) + '%')}</td>
+      <td data-label="獲利因子" class="num">${f(m.profit_factor, v => v.toFixed(2))}</td>
+      <td data-label="平均 R" class="num">${f(a.avg_r, v => (v >= 0 ? '+' : '') + v.toFixed(2))}</td>
+      <td data-label="期望值／筆" class="num">${f(m.expectancy, v => `<span class="${tone(v)}">${money(v, true)}</span>`)}</td>
+      <td data-label="賺賠比" class="num">${f(m.payoff, v => v.toFixed(2))}</td>
+      <td data-label="最大回撤" class="num">${ddTxt(a.max_dd_pct || 0)}</td>
+      <td data-label="停損在險" class="num">${money0(m.at_risk)}<span class="muted">（${(m.at_risk_pct || 0).toFixed(1)}%）</span></td>
+      <td data-label="曝險（多/空）" class="num">${(m.gross_pct || 0).toFixed(0)}%<span class="muted">（${(m.long_pct || 0).toFixed(0)}/${(m.short_pct || 0).toFixed(0)}）</span></td>
+      <td data-label="最大部位" class="num">${m.top_ticker ? esc(m.top_ticker) + ' ' + m.top_pct.toFixed(0) + '%' : '<span class="muted">—</span>'}</td></tr>`;
+  }).join('');
+  $('metrics').innerHTML = `<thead><tr><th>選手</th><th>淨值</th><th>總報酬</th><th>已實現</th><th>未實現</th><th>平倉（勝/敗）</th><th>勝率</th><th>獲利因子</th><th>平均 R</th><th>期望值／筆</th><th>賺賠比</th><th>最大回撤</th><th>停損在險</th><th>曝險（多/空）</th><th>最大部位</th></tr></thead><tbody>${rows}</tbody>`;
+
+  const bar = (a, right, track) => `<div class="bar" title="${esc(a.name)}"><div class="lb"><span>${sw(a.id)}<b>${esc(a.name)}</b></span><span class="num">${right}</span></div>${track}</div>`;
+  const maxR = Math.max(1, ...STATE.agents.map(a => Math.abs(a.ret_pct)));
+  $('ret-bars').innerHTML = STATE.agents.map(a => {
+    const w = Math.abs(a.ret_pct) / maxR * 50, left = a.ret_pct >= 0 ? 50 : 50 - w;
+    return bar(a, `<span class="${tone(a.ret_pct)}">${pct(a.ret_pct)}</span>`, `<div class="div-track"><div class="zero"></div><div class="seg" style="left:${left}%;width:${w}%;background:${col(a.id)}"></div></div>`);
+  }).join('');
+  $('exp-bars').innerHTML = STATE.agents.map(a => {
+    const m = a.metrics || {}, L = m.long_pct || 0, S = m.short_pct || 0, C = Math.max(0, 100 - L - S);
+    const seg = (w, st, extra = '') => w > 0.2 ? `<div class="seg ${extra}" style="width:${w}%;${st}"></div>` : '';
+    return bar(a, `多 ${L.toFixed(0)}%｜空 ${S.toFixed(0)}%｜現金 ${C.toFixed(0)}%`,
+      `<div class="track">${seg(L, `background:${col(a.id)}`)}${seg(S, `background-color:${col(a.id)}`, 'hatch')}${seg(C, 'background:var(--line-2)')}</div>`);
+  }).join('');
+  $('win-bars').innerHTML = STATE.agents.map(a => {
+    const n = (a.wins || 0) + (a.losses || 0);
+    return bar(a, n ? `${(a.win_rate || 0).toFixed(0)}%<span class="muted">｜${a.wins} 勝 ${a.losses} 敗</span>` : '<span class="muted">尚無平倉</span>',
+      `<div class="track"><div class="seg" style="width:${n ? a.win_rate : 0}%;background:${col(a.id)}"></div></div>`);
+  }).join('');
+  const maxD = Math.max(5, ...STATE.agents.map(a => a.max_dd_pct || 0));
+  $('mdd-bars').innerHTML = [...STATE.agents].sort((x, y) => (x.max_dd_pct || 0) - (y.max_dd_pct || 0)).map(a =>
+    bar(a, `${ddTxt(a.max_dd_pct || 0)}<span class="muted">｜目前 ${ddTxt(a.cur_dd_pct || 0)}</span>`,
+      `<div class="track"><div class="seg" style="width:${(a.max_dd_pct || 0) / maxD * 100}%;background:${col(a.id)}"></div></div>`)).join('');
+
+  $('strategy').innerHTML = `<thead><tr><th>選手</th><th>決策次數</th><th>交易筆數</th><th>平均風險</th><th>平均持倉</th><th>多/空</th><th class="l">常做標的</th></tr></thead><tbody>` +
+    STATE.agents.map(a => { const s = a.strategy || {};
+      return `<tr><td>${sw(a.id)}${esc(a.name)}</td><td data-label="決策次數" class="num">${s.decisions ?? '—'}</td><td data-label="交易筆數" class="num">${s.trades_total ?? 0}</td>
+        <td data-label="平均風險" class="num">${s.avg_risk_pct != null ? s.avg_risk_pct + '%' : '—'}</td><td data-label="平均持倉" class="num">${s.avg_hold_h != null ? s.avg_hold_h + ' 小時' : '—'}</td>
+        <td data-label="多/空" class="num">${s.long ?? 0}/${s.short ?? 0}</td><td data-label="常做標的" class="l num">${esc((s.top || []).join(' ')) || '—'}</td></tr>`; }).join('') + '</tbody>';
+}
+
+function renderDrawdown() {
+  lineChart('dd-chart', STATE.drawdown_curve || [], { label: '五位 AI 回撤曲線', val: (p, id) => p.dd[id], top0: true, minPad: 0.5, h: 220,
+    fmt: v => v.toFixed(1) + '%', tipFmt: v => v.toFixed(2) + '%', empty: '資料累積中' });
+  $('dd-legend').innerHTML = STATE.agents.map(a => `<span>${sw(a.id)}${esc(a.name)} 最大 ${ddTxt(a.max_dd_pct || 0)}</span>`).join('');
+}
+
+/* ---------- 交易紀錄 ---------- */
+function renderTrades() {
+  chips('tr-filter', 'tr', () => { renderTrades(); wrapCells('trades'); });
+  const T = [...(STATE.trades || [])].filter(t => !filt.tr || t.agent === filt.tr).sort((a, b) => String(b.closed_at).localeCompare(String(a.closed_at)));
+  const hold = t => { try { const h = (new Date(t.closed_at) - new Date(t.opened_at)) / 3.6e6; return h >= 24 ? (h / 24).toFixed(1) + ' 天' : h.toFixed(1) + ' 小時'; } catch (e) { return '—'; } };
+  $('trades').innerHTML = T.length ? `<thead><tr><th>出場時間</th><th class="l">選手</th><th class="l">標的</th><th>股數</th><th>進場 → 出場</th><th>損益</th><th>R</th><th>持有</th><th class="l">出場原因</th></tr></thead><tbody>` +
+    T.map(t => `<tr><td class="num">${esc(String(t.closed_at || '').slice(5, 16).replace('T', ' '))}</td>
+      <td data-label="選手" class="l">${sw(t.agent)}${esc(NAME[t.agent] || t.agent)}</td>
+      <td data-label="標的" class="l"><b>${esc(t.ticker)}</b> <span class="side ${t.side}">${t.side === 'long' ? '多' : '空'}</span></td>
+      <td data-label="股數" class="num">${t.qty}</td>
+      <td data-label="進場 → 出場" class="num">$${Number(t.entry).toFixed(2)} → $${Number(t.exit).toFixed(2)}</td>
+      <td data-label="損益" class="num ${tone(t.pnl)}"><b>${money(t.pnl, true)}</b></td>
+      <td data-label="R" class="num ${tone(t.r_multiple)}">${t.r_multiple != null ? (t.r_multiple >= 0 ? '+' : '') + t.r_multiple + 'R' : '—'}</td>
+      <td data-label="持有" class="num">${hold(t)}</td>
+      <td data-label="出場原因" class="wrap-cell">${esc(t.exit_reason)}</td></tr>`).join('') + '</tbody>'
+    : '<tbody><tr><td class="empty" style="text-align:center">尚無已平倉交易</td></tr></tbody>';
+}
+
+/* ---------- 動態與筆記 ---------- */
+function renderNotes() {
+  $('note-tabs').innerHTML = IDS.map(id => `<button class="fchip" aria-pressed="${noteTab === id}" data-id="${id}">${sw(id)}${NAME[id]}</button>`).join('');
+  $('note-tabs').querySelectorAll('.fchip').forEach(b => b.onclick = () => { noteTab = b.dataset.id; renderNotes(); });
+  $('note').textContent = (STATE.notes || {})[noteTab] || `目前沒有 ${NAME[noteTab]} 的學習筆記。`;
+}
+function renderEvents() {
+  chips('ev-filter', 'ev', renderEvents);
+  const E = (STATE.events || []).filter(e => !filt.ev || e.agent === filt.ev);
+  $('feed').innerHTML = E.length ? E.map(e => `<div class="ev" style="border-left-color:${col(e.agent)}">
+      <div class="hd"><span>${sw(e.agent)}<b>${esc(NAME[e.agent] || e.agent)}</b> <span class="badge">${esc(e.badge)}</span></span><span class="num muted">${esc(e.time)}</span></div>
+      ${e.title ? `<div class="t">${esc(e.title)}</div>` : ''}<p>${esc(e.text)}</p></div>`).join('') : '<div class="empty">沒有動態</div>';
+}
+
+/* ---------- 分頁 ---------- */
+const TABS = ['overview', 'positions', 'analytics', 'trades', 'feed'];
+let tab = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : (store.get('arena-tab') || 'overview');
+function setTab(t) {
+  tab = TABS.includes(t) ? t : 'overview';
+  document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab));
+  document.querySelectorAll('[data-panel]').forEach(p => p.hidden = p.dataset.panel !== tab);
+  store.set('arena-tab', tab);
+  if (location.hash.slice(1) !== tab) history.replaceState(null, '', '#' + tab);
+  renderCharts();
+}
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+window.addEventListener('hashchange', () => setTab(location.hash.slice(1)));
+function renderCharts() { if (tab === 'overview') renderEquity(); if (tab === 'analytics') renderDrawdown(); }
+let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(renderCharts, 150); });
+
+function wrapCells(id) {
+  $(id).querySelectorAll('td').forEach(td => { if (!(td.childNodes.length === 1 && td.firstChild.nodeType === 1)) td.innerHTML = `<span>${td.innerHTML}</span>`; });
+}
+
+function renderAll() {
+  renderHeader(); renderKPIs(); renderBoard(); renderMoves(); renderPositions();
+  renderMetrics(); renderTrades(); renderNotes(); renderEvents(); renderCharts();
+  ['metrics', 'strategy', 'trades'].forEach(wrapCells);
+}
+
+/* ---------- 深淺色 ---------- */
+const savedTheme = store.get('arena-theme');
+if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+$('theme').onclick = () => {
+  const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.dataset.theme = dark ? 'light' : 'dark';
+  store.set('arena-theme', document.documentElement.dataset.theme);
+  renderCharts();
+};
+
+/* ---------- 即時更新 ---------- */
+const ON_PAGES = location.hostname.endsWith('github.io');
+const LOCAL = location.protocol.startsWith('http') && location.port === '8888';
+const API_URL = ON_PAGES ? './state.json' : LOCAL ? '/api/state' : 'http://127.0.0.1:8888/api/state';
+function setLive(ok, text) { $('live').classList.toggle('off', !ok); $('live-text').textContent = text; }
+let busy = false, timer = null;
+async function fetchLive(force) {
+  if (busy) return; busy = true; $('refresh').textContent = '更新中…';
+  try {
+    const res = await fetch(API_URL + (ON_PAGES ? '?t=' + Date.now() : force ? '?force=1' : ''), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    Object.assign(STATE, await res.json());
+    renderAll();
+    setLive(true, ON_PAGES ? '雲端資料・每 15 分鐘更新' : '即時連線');
+  } catch (e) {
+    setLive(false, ON_PAGES ? '暫時讀不到最新資料' : '離線（本機伺服器沒開）');
+  } finally { busy = false; $('refresh').textContent = '立即更新'; }
+}
+function setTimer(sec) {
+  clearInterval(timer); store.set('arena-interval', String(sec));
+  if (+sec > 0) timer = setInterval(() => fetchLive(false), sec * 1000);
+}
+$('interval').value = store.get('arena-interval') || (ON_PAGES ? '60' : '30');
+$('interval').onchange = e => setTimer(+e.target.value);
+$('refresh').onclick = () => fetchLive(true);
+
+/* ---------- 本機：貼上推播 ---------- */
+if (LOCAL) {
+  $('sync-btn').hidden = false;
+  $('sync-btn').onclick = () => $('sync-dlg').showModal();
+  $('sync-cancel').onclick = () => $('sync-dlg').close();
+  $('sync-send').onclick = async () => {
+    const text = $('sync-text').value.trim(); if (!text) return;
+    try { await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agent: $('sync-agent').value, text }) }); } catch (e) {}
+    $('sync-dlg').close(); $('sync-text').value = ''; fetchLive(true);
+  };
+}
+
+setLive(true, ON_PAGES ? '雲端資料・每 15 分鐘更新' : '即時連線');
+renderAll();
+setTab(tab);
+setTimer(+$('interval').value);
+setTimeout(() => fetchLive(false), 1500);
+</script>
+</body>
+</html>
