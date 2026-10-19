@@ -10,7 +10,8 @@ import os, json, glob, base64, shutil, urllib.request, urllib.error
 from datetime import datetime
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-PULL = ['data/state.json', 'data/engine.log', 'data/external_agents.json', 'data/equity_curve.json', 'data/daily_brief.md']
+PULL = ['data/state.json', 'data/engine.log', 'data/external_agents.json', 'data/equity_curve.json', 'data/daily_brief.md',
+        'data/scan.txt', 'data/themes.json', 'RULES.md', 'AGY_INSTRUCTIONS.md', 'CODEX_INSTRUCTIONS.md']   # 規則與說明檔也同步，改規則不用再手動複製
 
 
 def _cfg():

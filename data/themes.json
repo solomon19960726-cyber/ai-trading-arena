@@ -1,0 +1,127 @@
+{
+  "_說明": "茂的 Koyfin 族群清單（每日市場掃描的族群熱度用）。程式只讀不改；要調整族群請直接編輯這個檔。",
+  "groups": {
+    "光通訊": [
+      "MRVL",
+      "GLW",
+      "LITE",
+      "NOK",
+      "CIEN",
+      "COHR",
+      "CRDO",
+      "FN",
+      "AAOI",
+      "AXTI"
+    ],
+    "記憶體": [
+      "MU",
+      "SKHY",
+      "SNDK",
+      "STX",
+      "WDC",
+      "DISK",
+      "DRAM"
+    ],
+    "電力": [
+      "GEV",
+      "ETN",
+      "CEG",
+      "VRT",
+      "BE",
+      "VST",
+      "TLN",
+      "OKLO",
+      "SMR",
+      "NVTS",
+      "LEU",
+      "WOLF",
+      "EOSE"
+    ],
+    "CPU": [
+      "AMD",
+      "INTC",
+      "ARM",
+      "QCOM"
+    ],
+    "MEGA7": [
+      "NVDA",
+      "AAPL",
+      "GOOGL",
+      "MSFT",
+      "AMZN",
+      "META",
+      "TSLA"
+    ],
+    "半導體": [
+      "TSM",
+      "AVGO",
+      "ASML",
+      "LRCX",
+      "AMAT",
+      "KLAC",
+      "ALAB",
+      "STM",
+      "ON"
+    ],
+    "算力": [
+      "ORCL",
+      "DELL",
+      "HPE",
+      "NBIS",
+      "CRWV",
+      "SMCI",
+      "IREN",
+      "WULF",
+      "APLD"
+    ],
+    "AI軟體": [
+      "PLTR",
+      "CRM",
+      "NOW",
+      "SNOW",
+      "NET",
+      "APP"
+    ],
+    "量子電腦": [
+      "IBM",
+      "IONQ",
+      "QBTS",
+      "RGTI",
+      "QUBT"
+    ],
+    "太空": [
+      "SPCX",
+      "RKLB",
+      "ASTS",
+      "PL",
+      "LUNR"
+    ],
+    "醫療": [
+      "LLY",
+      "JNJ",
+      "UNH",
+      "NVO",
+      "ISRG",
+      "HIMS"
+    ],
+    "金融科技": [
+      "V",
+      "HOOD",
+      "PYPL",
+      "COIN",
+      "CRCL",
+      "SOFI",
+      "IBIT"
+    ],
+    "稀土/材料": [
+      "LIN",
+      "MP",
+      "ROG"
+    ],
+    "無人機/國防": [
+      "KTOS",
+      "AVAV",
+      "ONDS"
+    ]
+  }
+}
