@@ -199,6 +199,7 @@ def read_discord_events(state, ext):
                 'text': info.get('note', '')
             })
 
+    events.sort(key=lambda e: str(e.get('time', '')), reverse=True)   # 「MM/DD HH:MM ET」同一年內照字串排就是照時間
     return events
 
 
@@ -249,6 +250,14 @@ def strategy_stats(a, state, ext):
         'avg_hold_h': round(sum(holds) / len(holds), 1) if holds else None,
         'long': longs, 'short': shorts, 'top': top, 'decisions': decisions,
     }
+
+
+def load_feed():
+    """Discord 頻道鏡像（live_server.poll_discord 存的），最新在前"""
+    try:
+        return list(reversed(json.load(open(os.path.join(DATA, 'discord_feed.json'), encoding='utf-8'))))[:150]
+    except Exception:
+        return []
 
 
 def load_curve_all():
@@ -495,6 +504,7 @@ def build_state(fast=True):
         'notes': notes,
         'events': events,
         'equity_curve': curve,
+        'discord': load_feed(),
         'drawdown_curve': dd_series[-400:]
     }
 

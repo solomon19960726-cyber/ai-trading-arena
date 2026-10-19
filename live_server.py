@@ -372,6 +372,44 @@ def detect_agent(text, username=''):
     return 'muse' if 'muse' in u else 'spark' if 'spark' in u else None
 
 
+FEED_FILE = os.path.join(BASE_DIR, 'data', 'discord_feed.json')   # 觀戰網頁的「Discord 動態」鏡像
+FEED_NAMES = {'claude': 'Claude', 'agy': 'AGY', 'codex': 'Codex', 'spark': 'Spark', 'muse': 'Muse'}
+
+
+def feed_item(m):
+    """一則 Discord 訊息 → 觀戰網頁用的精簡格式；只收機器人／webhook 和帶【AI 名字】標籤的訊息，不收一般聊天"""
+    author = (m.get('author') or {}).get('username') or ''
+    embeds = m.get('embeds') or []
+    text = (m.get('content') or '') + ''.join('\n' + (e.get('title') or '') for e in embeds)
+    tagged = re.search(r'【\s*(Claude|AGY|Codex|Spark|Muse)\s*】', text, re.I)
+    if not (m.get('webhook_id') or (m.get('author') or {}).get('bot') or tagged):
+        return None
+    agent = tagged.group(1).lower() if tagged else next((k for k, v in FEED_NAMES.items() if v.lower() in author.lower()), 'arena')
+    if not (m.get('webhook_id') or (m.get('author') or {}).get('bot')):
+        author = FEED_NAMES[agent]   # 人工轉貼的訊息顯示 AI 名字，不把貼文者的 Discord 帳號公開在網頁上
+    imgs = [a['url'] for a in m.get('attachments') or [] if str(a.get('content_type', '')).startswith('image/')]
+    return {'id': m['id'], 'time': m.get('timestamp'), 'author': author, 'agent': agent, 'content': (m.get('content') or '')[:3000],
+            'embeds': [{'title': (e.get('title') or '')[:300], 'description': (e.get('description') or '')[:4000],
+                        'color': '#%06x' % e['color'] if isinstance(e.get('color'), int) else None,
+                        'footer': ((e.get('footer') or {}).get('text') or '')[:200],
+                        'image': (e.get('image') or {}).get('url')} for e in embeds[:4]],
+            'images': imgs[:4]}
+
+
+def update_feed(msgs):
+    try:
+        feed = json.load(open(FEED_FILE, encoding='utf-8'))
+    except Exception:
+        feed = []
+    by_id = {f['id']: f for f in feed}
+    for m in msgs if isinstance(msgs, list) else []:
+        it = feed_item(m)
+        if it:
+            by_id[it['id']] = it
+    out = sorted(by_id.values(), key=lambda f: int(f['id']))[-300:]
+    json.dump(out, open(FEED_FILE, 'w', encoding='utf-8'), ensure_ascii=False)
+
+
 def poll_discord():
     import urllib.request
     token, channel = (os.environ.get('DISCORD_BOT_TOKEN') or '').strip(), (os.environ.get('DISCORD_CHANNEL_ID') or '').strip()
@@ -385,15 +423,23 @@ def poll_discord():
         last = json.load(open(LAST_FILE, encoding='utf-8')).get('last_id')
     except Exception:
         last = None
-    url = f'https://discord.com/api/v10/channels/{channel}/messages?limit=50' + (f'&after={last}' if last else '')
-    req = urllib.request.Request(url, headers={'Authorization': f'Bot {token}', 'User-Agent': 'DiscordBot (paper-trading-dashboard, 1.0)'})
+    def fetch(query):
+        req = urllib.request.Request(f'https://discord.com/api/v10/channels/{channel}/messages?{query}',
+                                     headers={'Authorization': f'Bot {token}', 'User-Agent': 'DiscordBot (paper-trading-dashboard, 1.0)'})
+        return json.loads(urllib.request.urlopen(req, timeout=15).read().decode('utf-8'))
+    if not os.path.exists(FEED_FILE):   # 第一次：先把頻道最近 100 則放進網頁鏡像（只顯示，不重新解析倉位）
+        try:
+            update_feed(fetch('limit=100'))
+        except Exception as e:
+            print(f'[Discord] 鏡像初始化失敗：{e}', flush=True)
     try:
-        msgs = json.loads(urllib.request.urlopen(req, timeout=15).read().decode('utf-8'))
+        msgs = fetch('limit=50' + (f'&after={last}' if last else ''))
     except Exception as e:
         print(f'[Discord] 讀取失敗：{e}', flush=True)
         return
     if not isinstance(msgs, list) or not msgs:
         return
+    update_feed(msgs)
     got = 0
     for m in sorted(msgs, key=lambda x: int(x['id'])):
         text = m.get('content') or ''
