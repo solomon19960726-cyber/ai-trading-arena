@@ -1,0 +1,20 @@
+{
+ "updated": "2026-10-19 14:45 ET",
+ "holdings": [
+  {
+   "ticker": "AVGO",
+   "shares": 6,
+   "cost": 351.17
+  },
+  {
+   "ticker": "SPCX",
+   "shares": 10,
+   "cost": 151.4
+  },
+  {
+   "ticker": "NVDA",
+   "shares": 5,
+   "cost": 216.01
+  }
+ ]
+}
