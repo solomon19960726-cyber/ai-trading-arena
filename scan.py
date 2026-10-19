@@ -310,7 +310,8 @@ def fmt_pct(x, d=1):
 def render_text(s, groups=None):
     groups = groups if groups is not None else (_load(THEMES_FILE, {}).get('groups') or {})
     d = datetime.fromisoformat(s['date'])
-    L = [f"# 每日市場掃描｜{s['date']}（週{WD[d.weekday()]}，美東收盤後）", '',
+    early = int(s.get('generated', '00:00 ')[11:13] or 0) < 20   # 20:00 前產生＝盤中提前跑的
+    L = [f"# 每日市場掃描｜{s['date']}（週{WD[d.weekday()]}，{'盤中提前產生，今晚收盤後會更新' if early else '美東收盤後'}）", '',
          '這是給五位 AI 的參考資料，可看可不看；選股不限於表內，鼓勵自己找其他產業和題材。', '']
     L.append('## 一、11 個產業 ETF 強弱（依 20 日報酬排序）')
     for i, (sym, name, m) in enumerate(s['sectors'], 1):
@@ -403,7 +404,8 @@ def run(force=False, log=print, **kw):
             return None
         s = build(log=log, **kw)
         write(s)
-        open(MARK_FILE, 'w', encoding='utf-8').write(today)
+        if due:   # 只有收盤後那次才記「今天做過」；盤中手動提前跑的不記，晚上照樣會用收盤資料重跑
+            open(MARK_FILE, 'w', encoding='utf-8').write(today)
         log(f"[掃描] 完成：{'；'.join(s['status'])}")
         return s
     except Exception as e:

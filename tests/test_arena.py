@@ -156,6 +156,15 @@ class ScanTest(unittest.TestCase):
         finally:
             S.build = orig
 
+    def test_forced_run_before_close_does_not_block_tonight(self):
+        noon = datetime(2026, 10, 19, 12, 0, tzinfo=ET)
+        kw = dict(fetch_hist=lambda t: None, fetch_univ=lambda: ([], 'x'), fetch_earn=lambda d: [], log=self.logs.append)
+        self.assertIsNotNone(S.run(force=True, now=noon, **kw))
+        self.assertFalse(os.path.exists(S.MARK_FILE))
+        self.assertIsNotNone(S.run(now=self.now, **kw))             # 晚上 20:30 照樣跑
+        self.assertEqual(open(S.MARK_FILE, encoding='utf-8').read(), '2026-10-19')
+        self.assertIsNone(S.run(now=self.now + timedelta(minutes=15), **kw))   # 同一晚不重跑
+
     def test_not_due_before_close_or_weekend(self):
         self.assertIsNone(S.run(now=datetime(2026, 10, 19, 15, 0, tzinfo=ET), log=self.logs.append))
         self.assertIsNone(S.run(now=datetime(2026, 10, 17, 21, 0, tzinfo=ET), log=self.logs.append))
