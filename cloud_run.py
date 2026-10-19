@@ -182,13 +182,13 @@ def dashboard_name(a):
 
 def build_pages():
     os.makedirs(DOCS, exist_ok=True)
+    scan.run(force='scan' in sys.argv, log=paper.log)   # 先掃描，網頁與每日戰況才拿得到這次的結果；自己會判斷是不是收盤後該跑的那次，失敗只記錄不中斷
     st = dashboard.build_state()
     record_curve(st)
     st['equity_curve'] = dashboard.load_curve()
     json.dump(st, open(os.path.join(DOCS, 'state.json'), 'w', encoding='utf-8'), ensure_ascii=False)
     open(os.path.join(DOCS, 'index.html'), 'w', encoding='utf-8').write(dashboard.render_html(st))
     open(os.path.join(DOCS, '.nojekyll'), 'w').close()
-    scan.run(force='scan' in sys.argv, log=paper.log)   # 自己會判斷是不是收盤後該跑的那次；失敗只記錄不中斷
     build_brief(st, force='brief' in sys.argv or 'scan' in sys.argv)
     if 'weekly-preview' in sys.argv:   # 只印出每週戰報內容，不推送、不寫標記
         n = dashboard.et_now()
@@ -201,6 +201,7 @@ if __name__ == '__main__':
     step('撮合', paper.cmd_run)
     step('Spark 帳本 CSV', live_server.sync_spark_ledger)   # 有設 SPARK_LEDGER_CSV_URL 才會讀
     step('同步 Muse／Spark', live_server.poll_discord)
+    step('人工修正', lambda: live_server.apply_corrections(log=paper.log))   # data/ext_corrections.json，每筆只套用一次
     step('觀戰網頁', build_pages)
     if 'chart' in sys.argv:
         step('淨值曲線圖', lambda: paper.post_chart(paper.et_now().strftime('%m/%d'), paper.load()))
