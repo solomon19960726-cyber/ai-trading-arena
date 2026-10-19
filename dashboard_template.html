@@ -10,7 +10,7 @@
     --bg: #f4f4f1; --card: #ffffff; --card-2: #f7f7f5; --line: #e4e3de; --line-2: #d3d2cc;
     --text: #141413; --text-2: #55544f; --text-3: #8a8983;
     --up: #0f8a5f; --down: #c8344a; --warn: #b45309; --accent: #3b4fd8;
-    --c-claude: #059669; --c-agy: #0284c7; --c-codex: #d97706; --c-spark: #9333ea; --c-muse: #db2777;
+    --c-claude: #059669; --c-agy: #0284c7; --c-codex: #d97706; --c-spark: #9333ea; --c-muse: #db2777; --c-mao: #475569;
     --shadow: 0 1px 2px rgba(20,20,19,.05), 0 4px 16px rgba(20,20,19,.04);
     --radius: 14px;
   }
@@ -20,7 +20,7 @@
       --bg: #111112; --card: #1a1a19; --card-2: #222220; --line: #2c2c2a; --line-2: #3a3a37;
       --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86;
       --up: #34c48b; --down: #f0687b; --warn: #f2a33a; --accent: #8b97ff;
-      --c-claude: #059669; --c-agy: #0891d1; --c-codex: #d97706; --c-spark: #a855f7; --c-muse: #ec4899;
+      --c-claude: #059669; --c-agy: #0891d1; --c-codex: #d97706; --c-spark: #a855f7; --c-muse: #ec4899; --c-mao: #cbd5e1;
       --shadow: none;
     }
   }
@@ -29,7 +29,7 @@
     --bg: #111112; --card: #1a1a19; --card-2: #222220; --line: #2c2c2a; --line-2: #3a3a37;
     --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86;
     --up: #34c48b; --down: #f0687b; --warn: #f2a33a; --accent: #8b97ff;
-    --c-claude: #059669; --c-agy: #0891d1; --c-codex: #d97706; --c-spark: #a855f7; --c-muse: #ec4899;
+    --c-claude: #059669; --c-agy: #0891d1; --c-codex: #d97706; --c-spark: #a855f7; --c-muse: #ec4899; --c-mao: #cbd5e1;
     --shadow: none;
   }
   * { box-sizing: border-box; }
@@ -298,6 +298,7 @@
     <button class="tab" role="tab" data-tab="analytics">績效分析</button>
     <button class="tab" role="tab" data-tab="pools">選股池</button>
     <button class="tab" role="tab" data-tab="scan">市場掃描</button>
+    <button class="tab" role="tab" data-tab="mao">茂</button>
     <button class="tab" role="tab" data-tab="trades">交易紀錄</button>
     <button class="tab" role="tab" data-tab="feed">Discord 與筆記</button>
   </div>
@@ -446,6 +447,39 @@
     <p class="muted" style="font-size:12px;margin:0" id="scan-status"></p>
   </section>
 
+  <section data-panel="mao" hidden>
+    <div class="kpis" id="mao-kpis"></div>
+    <div class="card">
+      <h2>顧問 R:R 排行榜</h2>
+      <p class="desc">五位 AI 幫茂的 FT 持股設停損停利，看誰的判斷最準；依平均 R 排序（已結算未滿 3 筆排在後面）。</p>
+      <div class="tbl-wrap"><table class="rt" id="mao-lb"></table></div>
+    </div>
+    <div class="card">
+      <h2>茂 vs 五位 AI：每日收盤淨值</h2>
+      <p class="desc" id="mao-chart-desc">茂只拿 FT 部位參加，起始換算成 US$10,000，從 10/20 美東收盤起算；報酬用每日報酬連乘（時間加權），入金出金不影響。</p>
+      <div class="chart" id="mao-chart"></div>
+      <div class="legend" id="mao-legend"></div>
+    </div>
+    <div class="card">
+      <h2>茂目前的 FT 持股</h2>
+      <p class="desc" id="mao-hold-desc">比例依市值計算；模擬股數＝對照組淨值 × 比例 ÷ 現價（可為小數）。</p>
+      <div class="tbl-wrap"><table class="rt" id="mao-hold"></table></div>
+    </div>
+    <div class="card">
+      <h2>每檔五位顧問的最新停損停利</h2>
+      <p class="desc">顧問每天美東 8:50、13:50、17:50 各給一次；滑過看理由與時間。灰字＝已結算或不計分。</p>
+      <div class="tbl-wrap"><table class="rt" id="mao-adv"></table></div>
+      <div class="gloss">
+        <div><b>判定</b>：建議之後用 5 分 K（含盤前盤後）看先碰停利還是停損；同一根都碰算停損；跳空越過用開盤價。</div>
+        <div><b>到期</b>：20 個交易日都沒碰到，以當時價格結算。</div>
+        <div><b>被更新</b>：同一位顧問對同一檔給新建議時，舊的那筆以新建議當下的價格結算，只追蹤最新一筆。</div>
+        <div><b>命中率</b>：先碰停利 ÷（先碰停利＋先碰停損）。<b>平均 R</b>：所有已結算（含到期、被更新）的 R 平均。</div>
+        <div><b>模擬損益</b>：每筆建議投入 US$1,000、照它的停損停利出場的損益總和。</div>
+        <div><b>不計分</b>：沒有給出「停損 &lt; 當時價格 &lt; 停利」的建議照樣列出，但不算進排行。AI 建議不會讓茂帳戶自動出場。</div>
+      </div>
+    </div>
+  </section>
+
   <section data-panel="trades" hidden>
     <div class="card">
       <h2>已平倉交易</h2>
@@ -496,7 +530,7 @@
 <script>
 const STATE = __DATA__;
 const IDS = ['claude', 'agy', 'codex', 'spark', 'muse'];
-const NAME = { claude: 'Claude', agy: 'AGY', codex: 'Codex', spark: 'Spark', muse: 'Muse' };
+const NAME = { claude: 'Claude', agy: 'AGY', codex: 'Codex', spark: 'Spark', muse: 'Muse', mao: '茂（FT）' };
 const col = id => `var(--c-${id})`;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -595,7 +629,7 @@ function lineChart(boxId, pts, opts) {
   if (!box) return;
   if (pts.length < 2) { box.innerHTML = `<div class="empty">${opts.empty}</div>`; return; }
   const W = Math.max(300, box.clientWidth || 700), H = opts.h || 240, L = 54, R = 74, T = 10, B = 26;
-  const ids = STATE.agents.map(a => a.id);
+  const ids = opts.ids || STATE.agents.map(a => a.id);
   let lo = Infinity, hi = -Infinity;
   pts.forEach(p => ids.forEach(id => { const v = opts.val(p, id); if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }));
   if (opts.base != null) { lo = Math.min(lo, opts.base); hi = Math.max(hi, opts.base); }
@@ -756,7 +790,7 @@ const md = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/__(.+?)__
 const etTime = iso => { try { return new Date(iso).toLocaleString('zh-TW', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false }); } catch (e) { return ''; } };
 const etDay = iso => { try { return new Date(iso).toLocaleDateString('zh-TW', { timeZone: 'America/New_York', month: 'long', day: 'numeric', weekday: 'short' }); } catch (e) { return ''; } };
 const SENTI = { bull: '偏多', bear: '偏空', neutral: '中性／觀望' };
-const KIND = { decision: '決策', trade: '交易', report: '戰報', info: '公告' };
+const KIND = { decision: '決策', trade: '交易', report: '戰報', info: '公告', advice: '顧問' };
 const kindF = { v: null };
 let feedDay = null;   // 目前看哪一天（MM/DD，美東）；null＝最新一天
 const dayKey = iso => { try { return new Date(iso).toLocaleDateString('en-US', { timeZone: 'America/New_York', month: '2-digit', day: '2-digit' }); } catch (e) { return ''; } };
@@ -778,7 +812,7 @@ function original(m) {
 function renderEvents() {
   const D = STATE.discord || [];
   chips('ev-filter', 'ev', renderEvents);
-  $('kind-filter').innerHTML = [null, 'decision', 'trade', 'report'].map(k => `<button class="fchip" data-k="${k ?? ''}" aria-pressed="${kindF.v === k}">${k ? KIND[k] : '全部類型'}</button>`).join('');
+  $('kind-filter').innerHTML = [null, 'decision', 'trade', 'report', 'advice'].map(k => `<button class="fchip" data-k="${k ?? ''}" aria-pressed="${kindF.v === k}">${k ? KIND[k] : '全部類型'}</button>`).join('');
   $('kind-filter').querySelectorAll('.fchip').forEach(b => b.onclick = () => { kindF.v = b.dataset.k || null; renderEvents(); });
   if (!D.length) { $('feed').innerHTML = '<div class="empty">還沒有讀到頻道訊息（雲端下一次執行後就會出現）</div>'; renderDigest(); return; }
   const days = [...new Set(D.map(m => dayKey(m.time)).filter(Boolean))];   // D 是新→舊，所以 days 也是新→舊
@@ -906,8 +940,72 @@ function renderScan() {
     `<div style="margin-top:8px;font-size:12px"><a href="./scan.txt" style="color:var(--accent)">看完整市場掃描（產業 ETF、漲跌幅、52 週新高、財報）→</a></div>`;
 }
 
+/* ---------- 茂（FT 對照組＋顧問 R:R） ---------- */
+function maoDaily() {
+  // 五位：每天最後一筆淨值；茂：每日收盤淨值
+  const by = {};
+  (STATE.equity_curve || []).forEach(p => { const d = String(p.t).slice(0, 5); by[d] = Object.assign(by[d] || {}, p.equity); });
+  const M = STATE.mao || {};
+  (M.days || []).forEach(d => { const k = d.date.slice(5).replace('-', '/'); by[k] = Object.assign(by[k] || {}, { mao: d.nav }); });
+  return Object.keys(by).sort().map(k => ({ t: k, equity: by[k] }));
+}
+function renderMaoChart() {
+  const pts = maoDaily();
+  const ids = ['mao', ...STATE.agents.map(a => a.id)];
+  lineChart('mao-chart', pts, { label: '茂與五位 AI 每日淨值', ids, val: (p, id) => p.equity[id], base: 10000, minPad: 20,
+    fmt: v => '$' + Math.round(v).toLocaleString('en-US'), tipFmt: v => money(v), empty: '資料累積中' });
+  $('mao-legend').innerHTML = ids.map(id => `<span>${sw(id)}${esc(NAME[id] || id)}</span>`).join('');
+}
+function renderMao() {
+  const M = STATE.mao;
+  if (!M || M.error) { $('mao-kpis').innerHTML = `<div class="kpi"><div class="l">茂（FT 對照組）</div><div class="v">—</div><div class="h">${esc((M && M.error) || '還沒有資料')}</div></div>`; return; }
+  const start = (M.start || '').slice(5).replace('-', '/');
+  const k = (l, v, h) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="h">${h}</div></div>`;
+  const best = [...STATE.agents].sort((a, b) => b.equity - a.equity)[0];
+  const top = (M.leaderboard || []).find(x => x.settled);
+  $('mao-kpis').innerHTML = [
+    k('茂（FT 對照組）淨值', M.nav != null ? `<span class="num">${money(M.nav)}</span><small class="num ${tone(M.ret_pct)}">${pct(M.ret_pct)}</small>` : '<span class="muted">尚未起算</span>',
+      M.nav != null ? `自 ${start} 收盤起算（US$10,000）` : `從 ${start} 美東收盤起算`),
+    k('持股', `<span class="num">${(M.holdings || []).length} 檔</span>`, `FT 持股更新：${esc(M.updated || '—')}`),
+    k('五位 AI 第一名', `<span>${sw(best.id)}${esc(best.name)}</span><small class="num ${tone(best.ret_pct)}">${pct(best.ret_pct)}</small>`, `淨值 <span class="num">${money(best.equity)}</span>（自各自加入起算）`),
+    k('顧問 R:R 第一名', top ? `<span>${sw(top.agent)}${esc(top.name)}</span><small class="num ${tone(top.avg_r)}">${top.avg_r >= 0 ? '+' : ''}${top.avg_r}R</small>` : '<span class="muted">尚無結算</span>',
+      top ? `命中率 ${top.hit_rate ?? '—'}%｜已結算 ${top.settled} 筆` : '建議結算後才會排名'),
+  ].join('');
+  $('mao-chart-desc').textContent = `茂只拿 FT 部位參加，起始換算成 US$10,000，從 ${start} 美東收盤起算；報酬用每日報酬連乘（時間加權），入金出金不影響。五位 AI 的線是各自每天最後一筆淨值。`;
+  $('mao-hold-desc').textContent = `比例依市值計算；模擬股數＝對照組淨值 × 比例 ÷ 現價（可為小數）。FT 持股更新：${M.updated || '—'}`;
+  $('mao-hold').innerHTML = (M.holdings || []).length ? `<thead><tr><th class="l">代號</th><th>FT 股數</th><th>比例</th><th>模擬股數</th><th>現價</th><th>今日</th><th>FT 成本報酬</th></tr></thead><tbody>` +
+    M.holdings.map(h => `<tr><td class="l"><b>${esc(h.ticker)}</b></td><td data-label="FT 股數" class="num">${h.shares}</td>
+      <td data-label="比例" class="num"><b>${(h.weight || 0).toFixed(1)}%</b></td><td data-label="模擬股數" class="num">${h.units != null ? h.units.toFixed(2) : '—'}</td>
+      <td data-label="現價" class="num">${h.price != null ? '$' + Number(h.price).toFixed(2) : '—'}</td>
+      <td data-label="今日" class="num ${tone(h.chg_pct)}">${pct(h.chg_pct)}</td>
+      <td data-label="FT 成本報酬" class="num ${h.price && h.cost ? tone(h.price - h.cost) : ''}">${h.price && h.cost ? pct((h.price / h.cost - 1) * 100, true, 1) : '—'}</td></tr>`).join('') + '</tbody>'
+    : '<tbody><tr><td class="empty" style="text-align:center">還沒有 FT 持股資料（data/mao_ft.json）</td></tr></tbody>';
+  const lb = M.leaderboard || [];
+  $('mao-lb').innerHTML = `<thead><tr><th class="l">名次／顧問</th><th>平均 R</th><th>命中率</th><th>已結算</th><th>追蹤中</th><th>建議</th><th>模擬損益</th></tr></thead><tbody>` +
+    lb.map(x => `<tr><td class="l"><span class="num muted" style="display:inline-block;min-width:22px">${x.settled >= 3 ? x.rank + '.' : '—'}</span>${sw(x.agent)}<b>${esc(x.name)}</b></td>
+      <td data-label="平均 R" class="num ${tone(x.avg_r)}"><b>${x.avg_r != null ? (x.avg_r >= 0 ? '+' : '') + x.avg_r.toFixed(2) + 'R' : '—'}</b></td>
+      <td data-label="命中率" class="num">${x.hit_rate != null ? x.hit_rate.toFixed(0) + '%' : '—'}</td>
+      <td data-label="已結算" class="num" title="停利 ${x.target}／停損 ${x.stop}／到期 ${x.expired}／被更新 ${x.superseded}">${x.settled}<span class="muted">（${x.target}✓ ${x.stop}✗）</span></td>
+      <td data-label="追蹤中" class="num">${x.open}${x.open_r != null ? `<span class="muted">（${x.open_r >= 0 ? '+' : ''}${x.open_r}R）</span>` : ''}</td>
+      <td data-label="建議" class="num">${x.advice}</td>
+      <td data-label="模擬損益" class="num ${tone(x.sim_pnl)}">${money0(x.sim_pnl, true)}</td></tr>`).join('') + '</tbody>';
+  const adv = M.advice || {};
+  const tks = [...new Set([...(M.holdings || []).map(h => h.ticker), ...Object.keys(adv)])];
+  const AC = { '續抱': 'neutral', '加碼': 'bull', '減碼': 'bear', '出場': 'bear' };
+  $('mao-adv').innerHTML = tks.length ? `<thead><tr><th class="l">代號</th>${ADV_IDS.map(a => `<th class="l">${sw(a)}${NAME[a]}</th>`).join('')}</tr></thead><tbody>` +
+    tks.map(t => `<tr><td class="l"><b>${esc(t)}</b></td>` + ADV_IDS.map(a => {
+      const r = (adv[t] || {})[a];
+      if (!r) return `<td data-label="${NAME[a]}" class="l muted">—</td>`;
+      const dim = r.status !== 'open' ? ' style="opacity:.55"' : '';
+      return `<td data-label="${NAME[a]}" class="l"${dim} title="${esc(String(r.time || '').slice(5, 16).replace('T', ' '))}｜${esc(r.reason || '')}">
+        <span class="senti ${AC[r.action] || 'neutral'}">${esc(r.action)}</span> <span class="num">${r.stop ?? '—'} / ${r.target ?? '—'}</span>
+        <span class="muted num">${r.rr != null ? r.rr + 'R' : '不計分'}</span></td>`;
+    }).join('') + '</tr>').join('') + '</tbody>' : '<tbody><tr><td class="empty" style="text-align:center">還沒有顧問建議</td></tr></tbody>';
+}
+const ADV_IDS = ['claude', 'agy', 'codex', 'spark', 'muse'];
+
 /* ---------- 分頁 ---------- */
-const TABS = ['overview', 'positions', 'analytics', 'pools', 'scan', 'trades', 'feed'];
+const TABS = ['overview', 'positions', 'analytics', 'pools', 'scan', 'mao', 'trades', 'feed'];
 let tab = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : (store.get('arena-tab') || 'overview');
 function setTab(t) {
   tab = TABS.includes(t) ? t : 'overview';
@@ -919,7 +1017,7 @@ function setTab(t) {
 }
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => setTab(b.dataset.tab));
 window.addEventListener('hashchange', () => setTab(location.hash.slice(1)));
-function renderCharts() { if (tab === 'overview') renderEquity(); if (tab === 'analytics') renderDrawdown(); if (tab === 'feed') renderEvents(); }
+function renderCharts() { if (tab === 'overview') renderEquity(); if (tab === 'analytics') renderDrawdown(); if (tab === 'feed') renderEvents(); if (tab === 'mao') renderMaoChart(); }
 let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(renderCharts, 150); });
 
 function wrapCells(id) {
@@ -928,8 +1026,8 @@ function wrapCells(id) {
 
 function renderAll() {
   renderHeader(); renderKPIs(); renderBoard(); renderMoves(); renderPositions();
-  renderMetrics(); renderPools(); renderScan(); renderTrades(); renderNotes(); renderEvents(); renderCharts();
-  ['metrics', 'strategy', 'trades', 'heat'].forEach(wrapCells);
+  renderMetrics(); renderPools(); renderScan(); renderMao(); renderTrades(); renderNotes(); renderEvents(); renderCharts();
+  ['metrics', 'strategy', 'trades', 'heat', 'mao-hold', 'mao-lb', 'mao-adv'].forEach(wrapCells);
 }
 
 /* ---------- 深淺色 ---------- */
