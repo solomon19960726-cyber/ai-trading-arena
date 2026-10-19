@@ -253,11 +253,163 @@ def strategy_stats(a, state, ext):
 
 
 def load_feed():
-    """Discord 頻道鏡像（live_server.poll_discord 存的），最新在前"""
+    """Discord 頻道鏡像（live_server.poll_discord 存的），最新在前；每則附上程式擷取的重點"""
     try:
-        return list(reversed(json.load(open(os.path.join(DATA, 'discord_feed.json'), encoding='utf-8'))))[:150]
+        feed = list(reversed(json.load(open(os.path.join(DATA, 'discord_feed.json'), encoding='utf-8'))))[:150]
     except Exception:
         return []
+    for m in feed:
+        m.update(analyze_message(m))
+    return feed
+
+
+# ---------- Discord 重點擷取（只從原文抓句子與關鍵字，不改寫任何 AI 的意思）----------
+HOT_TICKERS = {'SPY', 'QQQ', 'IWM', 'DIA', 'SMH', 'SOXX', 'NVDA', 'MSFT', 'AAPL', 'AMZN', 'GOOGL', 'GOOG', 'META', 'TSLA',
+               'AMD', 'AVGO', 'XLE', 'XLV', 'XLP', 'XLU', 'XLF', 'XLK', 'GLD', 'TLT', 'CRWV', 'NFLX', 'ORCL', 'MU', 'TSM',
+               'INTC', 'PLTR', 'COIN', 'MSTR', 'IBIT', 'ARM', 'SMCI', 'UNH', 'JPM', 'LLY'}
+BULL_WORDS = ['偏多', '反彈', '轉強', '翻紅', '止跌', 'risk-on', '樂觀', '突破', '抗跌', '收斂', '回升', '走強', '多頭']
+BEAR_WORDS = ['偏空', '賣壓', '偏弱', '走弱', '急跌', 'risk-off', '恐慌', '跌破', '落後', '續弱', '疑慮', '空頭', '轉弱']
+NEGATED = re.compile(r'[未不沒非無][^，。；,\s]{0,3}(翻多|追多|翻空|追空|轉強|轉弱|突破|止跌)')
+REPORT_WORDS = ['每日戰報', '每週戰報', '淨值排行', '收盤戰報', '每日收盤']
+
+
+def _plain(m):
+    t = (m.get('content') or '') + ''.join('\n' + (e.get('title') or '') + '\n' + (e.get('description') or '') for e in m.get('embeds') or [])
+    # 只把全形英數字與 ＄＠ 轉半形（代號、價格才抓得到），中文標點保留原樣
+    t = ''.join(chr(ord(c) - 0xFEE0) if '０' <= c <= '９' or 'Ａ' <= c <= 'Ｚ' or 'ａ' <= c <= 'ｚ' or c in '＄＠' else c for c in t)
+    return t.replace('**', '').replace('__', '')
+
+
+def _clip(t, n=90):
+    t = re.sub(r'\s+', ' ', t).strip(' ：:；;，,。|｜-•】【「」')
+    return t if len(t) <= n else t[:n - 1] + '…'
+
+
+def analyze_message(m):
+    t = _plain(m)
+    head = sent = None
+    for pat in (r'大盤看法\s*[:：]\s*([^；;。\n]+)', r'大盤\s*[:：]\s*([^；;。\n]+)', r'(大盤(?:偏空|偏多)[^；;。\n]*)',
+                r'決策紀錄\s*[:：]\s*([^；;。\n]+)', r'盤面解讀\s*[:：]\s*([^；;。\n]+)', r'(收盤偏[多空][^；;。\n]*)',
+                r'([^\n]*?收盤風險偏[多空][^；;。\n]*)'):
+        mm = re.search(pat, t)
+        if mm:
+            sent = mm.group(1)
+            head = _clip(sent)
+            break
+    if not head:   # 沒有大盤句：取第一行有內容的文字（去掉標籤、表情）
+        for line in t.splitlines():
+            line = re.sub(r'^[\W_]*【[^】]*】', '', line).strip()
+            line = re.sub(r'^[^\w$]+', '', line)
+            if len(line) >= 6 and not line.startswith('決策'):
+                sent = line
+                head = _clip(line)
+                break
+    # 多空：句子裡明講「偏多／偏空／看多／看空」優先；沒明講才看用詞，要明顯偏一邊（±2）才算，其餘當中性／觀望
+    full = sent or ''
+    if sent:   # 大盤句延伸到句號，避免只看到前半句
+        i = t.find(sent)
+        full = t[i:i + len(sent) + 200].split('。')[0]
+    exp_bull = any(w in full for w in ('偏多', '看多', '多方佔優')) and not NEGATED.search(full)
+    exp_bear = any(w in full for w in ('偏空', '看空', '空方佔優'))
+    if exp_bull != exp_bear:
+        senti = 'bull' if exp_bull else 'bear'
+    else:
+        neg = NEGATED.findall(full)
+        score = sum(full.count(w) for w in BULL_WORDS) - sum(full.count(w) for w in BEAR_WORDS)
+        score -= sum(1 for w in neg if w in ('翻多', '追多', '轉強', '突破', '止跌'))
+        score += sum(1 for w in neg if w in ('翻空', '追空', '轉弱'))
+        senti = 'bull' if score >= 2 else 'bear' if score <= -2 else 'neutral'
+    actions = []
+    for mm in re.finditer(r'(?:✅\s*)?成交\s*([A-Z]{1,5})\s*[|｜]?\s*(做多|放空|多|空)?', t):
+        actions.append({'type': 'open', 'ticker': mm.group(1), 'side': 'short' if mm.group(2) and '空' in mm.group(2) else 'long'})
+    for mm in re.finditer(r'([🔴🟢⚪])?\s*(平倉|停損|停利)\s*([A-Z]{1,5})\s+[^\n]{0,30}?@', t):
+        actions.append({'type': 'close', 'ticker': mm.group(3), 'why': mm.group(2)})
+    fresh = [l for l in t.splitlines() if '觸價平倉' in l and '已於' not in l]   # 「已於今晨…平倉」是回顧，不算新的平倉
+    if fresh and not any(a['type'] == 'close' for a in actions):
+        mm = re.search(r'(?:放空|做多|多單|空單)\s*([A-Z]{1,5})', t)
+        tk = mm.group(1) if mm else None
+        if tk:
+            actions.append({'type': 'close', 'ticker': tk, 'why': '停損' if '停損' in t else '平倉'})
+    for mm in re.finditer(r'🔧\s*調整\s*([A-Z]{1,5})', t):
+        actions.append({'type': 'modify', 'ticker': mm.group(1)})
+    hold = re.search(r'(?:本次不動作|PASS\s*不動作)\s*[^：:\w]{0,3}[：:]?\s*([^。\n]*)', t)
+    if hold and not any(a['type'] in ('open', 'close') for a in actions):
+        actions.append({'type': 'hold', 'why': _clip(hold.group(1), 80)})
+    if '測試成功' in t[:120]:
+        kind = 'info'
+    elif any(w in t for w in REPORT_WORDS):
+        kind = 'report'
+    elif any(a['type'] in ('open', 'close', 'modify') for a in actions):
+        kind = 'trade'
+    elif actions or '決策' in t:
+        kind = 'decision'
+    else:
+        kind = 'info'
+    tickers = sorted({x for x in re.findall(r'(?<![A-Za-z])([A-Z]{2,5})(?![A-Za-z])', t) if x in HOT_TICKERS})
+    return {'kind': kind, 'headline': head or '', 'sentiment': senti,
+            'actions': actions, 'tickers': tickers}
+
+
+def discord_digest(feed):
+    """重點整理：最近一個有訊息的美東日期裡，大家說了什麼（多空、動作、交易、熱門標的）"""
+    try:
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo('America/New_York')
+    except Exception:
+        tz = timezone(timedelta(hours=-4))
+    ids = list(AGENT_META)
+    for m in feed:
+        try:
+            m['_d'] = datetime.fromisoformat(m['time']).astimezone(tz)
+        except Exception:
+            m['_d'] = None
+    talk = [m for m in feed if m['_d'] and m.get('agent') in ids]
+    if not talk:
+        return None
+    day = max(m['_d'] for m in talk).date()
+    today = [m for m in talk if m['_d'].date() == day]
+    latest = {}
+    for m in talk:   # feed 是新→舊：每位第一則決策／交易訊息就是最新立場
+        if m['agent'] not in latest and m['kind'] in ('decision', 'trade', 'report') and m['headline']:
+            act = next((a for a in m['actions'] if a['type'] != 'hold'), None) or next(iter(m['actions']), None)
+            latest[m['agent']] = {'agent': m['agent'], 'time': m['_d'].strftime('%m/%d %H:%M ET'), 'sentiment': m['sentiment'],
+                                  'headline': m['headline'], 'action': act, 'today': m['_d'].date() == day}
+    stance = [latest[a] for a in ids if a in latest]
+    bulls = [x['agent'] for x in stance if x['sentiment'] == 'bull']
+    bears = [x['agent'] for x in stance if x['sentiment'] == 'bear']
+    neutral = [x['agent'] for x in stance if x['sentiment'] == 'neutral']
+    trades = [dict(a, agent=m['agent'], time=m['_d'].strftime('%H:%M')) for m in reversed(today) for a in m['actions'] if a['type'] in ('open', 'close', 'modify')]
+    holds = sorted({m['agent'] for m in today if any(a['type'] == 'hold' for a in m['actions'])} - {t['agent'] for t in trades if t['type'] == 'open'})
+    hot = {}
+    for m in today:
+        for tk in m['tickers']:
+            hot.setdefault(tk, set()).add(m['agent'])
+    hot = sorted(([tk, sorted(v, key=ids.index)] for tk, v in hot.items()), key=lambda x: (-len(x[1]), x[0]))[:8]
+    speakers = sorted({m['agent'] for m in today}, key=ids.index)
+    nm = lambda xs: '、'.join(AGENT_META[x]['name'] for x in xs)
+    L = [f"{day.strftime('%m/%d')} 共 {len(today)} 則訊息，{len(speakers)} 位發言（{nm(speakers)}）。"]
+    if stance:
+        L.append(f"大盤看法：偏多 {len(bulls)} 位" + (f"（{nm(bulls)}）" if bulls else '') + f"、中性 {len(neutral)} 位" +
+                 (f"（{nm(neutral)}）" if neutral else '') + f"、偏空 {len(bears)} 位" + (f"（{nm(bears)}）" if bears else '') + '。')
+    opens = [t for t in trades if t['type'] == 'open']
+    closes = [t for t in trades if t['type'] == 'close']
+    act = []
+    if opens:
+        act.append('開倉 ' + '、'.join(f"{AGENT_META[t['agent']]['name']} {t['ticker']}{'空' if t.get('side') == 'short' else '多'}" for t in opens))
+    if closes:
+        act.append('平倉 ' + '、'.join(f"{AGENT_META[t['agent']]['name']} {t['ticker']}" for t in closes))
+    if holds:
+        act.append(f"{nm(holds)} 本次不動作")
+    if act:
+        L.append('動作：' + '；'.join(act) + '。')
+    if hot:
+        L.append('最多人提到：' + '、'.join(f"{tk}（{len(who)} 位）" for tk, who in hot[:3]) + '。')
+    if bulls and bears:
+        L.append(f"看法分歧：{nm(bulls)} 偏多，{nm(bears)} 偏空。")
+    for m in feed:
+        m.pop('_d', None)
+    return {'day': day.strftime('%m/%d'), 'count': len(today), 'speakers': speakers, 'summary': L, 'stance': stance,
+            'bulls': bulls, 'bears': bears, 'neutral': neutral, 'trades': trades, 'hot': hot}
 
 
 def load_curve_all():
@@ -479,6 +631,7 @@ def build_state(fast=True):
     # 依淨值高低排序
     agents_summary.sort(key=lambda x: x['equity'], reverse=True)
 
+    feed = load_feed()
     curve = load_curve()
     mdd, cur_dd, dd_series = drawdown_stats(curve, {a['id']: a['equity'] for a in agents_summary})
     for a in agents_summary:
@@ -504,7 +657,8 @@ def build_state(fast=True):
         'notes': notes,
         'events': events,
         'equity_curve': curve,
-        'discord': load_feed(),
+        'discord': feed,
+        'digest': discord_digest(feed),
         'drawdown_curve': dd_series[-400:]
     }
 
