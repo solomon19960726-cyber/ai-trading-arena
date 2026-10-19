@@ -27,7 +27,7 @@ jobs:
   run:
     if: vars.ENGINE == 'cloud' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15   # 收盤後那次多跑市場掃描（約 1 分鐘）
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

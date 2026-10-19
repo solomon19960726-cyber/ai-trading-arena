@@ -252,6 +252,16 @@ def strategy_stats(a, state, ext):
     }
 
 
+def load_scan():
+    """每日市場掃描（scan.py 產生）的精簡版：族群熱度、產業 ETF、新熱點"""
+    try:
+        sc = json.load(open(os.path.join(DATA, 'scan.json'), encoding='utf-8'))
+    except Exception:
+        return None
+    return {'date': sc.get('date'), 'themes': sc.get('themes', []), 'hot': sc.get('hot', {}),
+            'sectors': [[s, n, round(m['r20'], 1), round(m['r5'], 1)] for s, n, m in sc.get('sectors', [])]}
+
+
 def load_feed():
     """Discord 頻道鏡像（live_server.poll_discord 存的），最新在前；每則附上程式擷取的重點"""
     try:
@@ -285,8 +295,35 @@ def _clip(t, n=90):
     return t if len(t) <= n else t[:n - 1] + '…'
 
 
+WATCH_LINE = re.compile(r'^[\W_]*(?:【[^】]*】|\[[^\]]*\])?[\W_]*觀察\s*[:：]\s*(.*)$')
+WATCH_INL = re.compile(r'(?:[;；|｜]\s*|\s+)觀察\s*[:：]\s*(.*)$')
+
+
+def split_watch(t):
+    """把觀察名單拆出來：回傳（去掉觀察行的文字, [(代號, 看法)]）"""
+    keep, items = [], []
+    for line in t.split('\n'):
+        m = WATCH_LINE.match(line)
+        if not m:
+            m2 = WATCH_INL.search(line)
+            if m2:
+                keep.append(line[:m2.start()])
+                m = m2
+            else:
+                keep.append(line)
+                continue
+        for part in re.split(r'[;；]', m.group(1)):
+            mm = re.match(r'\s*\$?([A-Z]{1,5}(?:\.[A-Z])?)(?![A-Za-z])\s*[:：,，、-]?\s*(.*)', part)
+            if mm and mm.group(1) not in NOT_TICKERS:
+                items.append((mm.group(1), mm.group(2).strip()[:60]))
+    return '\n'.join(keep), items
+
+
+NOT_TICKERS = {'SL', 'TP', 'ET', 'US', 'USD', 'ETF', 'AI', 'SPX', 'NDX', 'SOX', 'VIX', 'NQ', 'ES', 'R', 'PM', 'AM'}
+
+
 def analyze_message(m):
-    t = _plain(m)
+    t, watch = split_watch(_plain(m))
     head = sent = None
     for pat in (r'大盤看法\s*[:：]\s*([^；;。\n]+)', r'大盤\s*[:：]\s*([^；;。\n]+)', r'(大盤(?:偏空|偏多)[^；;。\n]*)',
                 r'決策紀錄\s*[:：]\s*([^；;。\n]+)', r'盤面解讀\s*[:：]\s*([^；;。\n]+)', r'(收盤偏[多空][^；;。\n]*)',
@@ -346,8 +383,90 @@ def analyze_message(m):
     else:
         kind = 'info'
     tickers = sorted({x for x in re.findall(r'(?<![A-Za-z])([A-Z]{2,5})(?![A-Za-z])', t) if x in HOT_TICKERS})
+    tickers = sorted(set(tickers) | {w[0] for w in watch})
     return {'kind': kind, 'headline': head or '', 'sentiment': senti,
-            'actions': actions, 'tickers': tickers}
+            'actions': actions, 'tickers': tickers, 'watch': [list(w) for w in watch]}
+
+
+ETF_GROUP = {'SPY': '大盤指數', 'QQQ': '大盤指數', 'IWM': '大盤指數', 'DIA': '大盤指數', 'SMH': '半導體', 'SOXX': '半導體',
+             'SOXL': '半導體', 'XLK': '科技', 'XLF': '金融', 'XLV': '醫療', 'XLE': '能源', 'XLI': '工業', 'XLY': '非必需消費',
+             'XLP': '必需消費', 'XLU': '公用事業', 'XLB': '原物料', 'XLRE': '房地產', 'XLC': '通訊服務', 'GLD': '黃金／商品',
+             'SLV': '黃金／商品', 'TLT': '債券', 'IEF': '債券', 'TSMC': '半導體', 'JPM': '金融', 'XOM': '能源', 'CVX': '能源'}
+
+
+def load_themes():
+    try:
+        return json.load(open(os.path.join(DATA, 'themes.json'), encoding='utf-8')).get('groups') or {}
+    except Exception:
+        return {}
+
+
+def group_of(tk, themes):
+    for g, tks in themes.items():
+        if tk in tks:
+            return g
+    return ETF_GROUP.get(tk, '其他')
+
+
+def stock_pools(state, ext, feed):
+    """選股池：每人的觀察名單（「觀察：」行）、交易過的、平常提到的；族群分布與彼此重疊度"""
+    themes = load_themes()
+    known = HOT_TICKERS | {t for v in themes.values() for t in v} | set(ETF_GROUP)
+    ids = list(AGENT_META)
+    P = {a: {'watch': {}, 'traded': set(), 'mentioned': {}, 'watch_last': None} for a in ids}
+
+    def take(agent, text, when):
+        if agent not in P or not text:
+            return
+        rest, watch = split_watch(text)
+        for tk, view in watch:
+            w = P[agent]['watch'].setdefault(tk, {'n': 0, 'view': ''})
+            w['n'] += 1
+            if when and (not P[agent]['watch_last'] or when >= P[agent]['watch_last']):
+                w['view'], P[agent]['watch_last'] = view or w['view'], when
+        for tk in set(re.findall(r'(?<![A-Za-z])([A-Z]{2,5})(?![A-Za-z])', rest)) & known:
+            P[agent]['mentioned'][tk] = P[agent]['mentioned'].get(tk, 0) + 1
+    # Claude／AGY／Codex：引擎下單匣的決策紀錄；Muse／Spark：Discord 鏡像
+    for fp in sorted(glob.glob(os.path.join(DONE_DIR, '*.json'))):
+        try:
+            d = json.load(open(fp, encoding='utf-8'))
+        except Exception:
+            continue
+        for it in d if isinstance(d, list) else [d]:
+            if it.get('action') == 'note':
+                take(str(it.get('agent', '')).lower(), it.get('text') or '', os.path.basename(fp)[:13])
+            elif it.get('action') == 'open':
+                take(str(it.get('agent', '')).lower(), it.get('reason') or '', os.path.basename(fp)[:13])
+    for m in reversed(feed):
+        if m.get('agent') in ('muse', 'spark'):
+            take(m['agent'], _plain(m), (m.get('time') or '')[:16])
+    for x in state.get('positions', []) + state.get('trades', []):
+        if x.get('agent') in P:
+            P[x['agent']]['traded'].add(x['ticker'])
+    for a in ('muse', 'spark'):
+        for x in ext.get(a, {}).get('positions', []) + ext.get(a, {}).get('trades', []):
+            P[a]['traded'].add(x['ticker'])
+    out, sets = {}, {}
+    for a, p in P.items():
+        has_watch = bool(p['watch'])
+        view = set(p['watch']) | p['traded'] if has_watch else set(p['mentioned']) | p['traded']
+        sets[a] = view
+        groups = {}
+        for tk in view:
+            g = group_of(tk, themes)
+            groups[g] = groups.get(g, 0) + 1
+        out[a] = {'watch': sorted(([tk, w['n'], w['view']] for tk, w in p['watch'].items()), key=lambda x: (-x[1], x[0])),
+                  'traded': sorted(p['traded']), 'has_watch': has_watch,
+                  'mentioned': sorted(p['mentioned'].items(), key=lambda x: (-x[1], x[0]))[:20],
+                  'groups': sorted(groups.items(), key=lambda x: (-x[1], x[0])), 'size': len(view)}
+    overlap = {a: {b: (round(len(sets[a] & sets[b]) / len(sets[a] | sets[b]) * 100) if sets[a] | sets[b] else 0)
+                   for b in ids if b != a} for a in ids}
+    shared = {}
+    for a in ids:
+        for tk in sets[a]:
+            shared.setdefault(tk, []).append(a)
+    common = sorted(([tk, who] for tk, who in shared.items() if len(who) >= 2), key=lambda x: (-len(x[1]), x[0]))[:12]
+    return {'agents': out, 'overlap': overlap, 'common': common}
 
 
 def discord_digests(feed, days=7):
@@ -679,6 +798,8 @@ def build_state(fast=True):
         'equity_curve': curve,
         'discord': feed,
         'digests': discord_digests(feed),
+        'pools': stock_pools(state, ext, feed),
+        'scan': load_scan(),
         'drawdown_curve': dd_series[-400:]
     }
 
