@@ -350,8 +350,26 @@ def analyze_message(m):
             'actions': actions, 'tickers': tickers}
 
 
-def discord_digest(feed):
-    """重點整理：最近一個有訊息的美東日期裡，大家說了什麼（多空、動作、交易、熱門標的）"""
+def discord_digests(feed, days=7):
+    """最近幾個有訊息的美東日期，每天一份重點整理：{'MM/DD': digest}"""
+    try:
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo('America/New_York')
+    except Exception:
+        tz = timezone(timedelta(hours=-4))
+    seen = []
+    for m in feed:
+        try:
+            d = datetime.fromisoformat(m['time']).astimezone(tz).date()
+        except Exception:
+            continue
+        if m.get('agent') in AGENT_META and d not in seen:
+            seen.append(d)
+    return {d.strftime('%m/%d'): discord_digest(feed, d) for d in sorted(seen, reverse=True)[:days]}
+
+
+def discord_digest(feed, day=None):
+    """重點整理：某個美東日期（預設最近有訊息的那天）大家說了什麼（多空、動作、交易、熱門標的）"""
     try:
         from zoneinfo import ZoneInfo
         tz = ZoneInfo('America/New_York')
@@ -366,7 +384,8 @@ def discord_digest(feed):
     talk = [m for m in feed if m['_d'] and m.get('agent') in ids]
     if not talk:
         return None
-    day = max(m['_d'] for m in talk).date()
+    day = day or max(m['_d'] for m in talk).date()
+    talk = [m for m in talk if m['_d'].date() <= day]   # 看過去某天時，最新立場只算到那天為止
     today = [m for m in talk if m['_d'].date() == day]
     latest = {}
     for m in talk:   # feed 是新→舊：每位第一則決策／交易訊息就是最新立場
@@ -375,9 +394,10 @@ def discord_digest(feed):
             latest[m['agent']] = {'agent': m['agent'], 'time': m['_d'].strftime('%m/%d %H:%M ET'), 'sentiment': m['sentiment'],
                                   'headline': m['headline'], 'action': act, 'today': m['_d'].date() == day}
     stance = [latest[a] for a in ids if a in latest]
-    bulls = [x['agent'] for x in stance if x['sentiment'] == 'bull']
-    bears = [x['agent'] for x in stance if x['sentiment'] == 'bear']
-    neutral = [x['agent'] for x in stance if x['sentiment'] == 'neutral']
+    voiced = [x for x in stance if x['today']]   # 多空統計只算當天有發言的人
+    bulls = [x['agent'] for x in voiced if x['sentiment'] == 'bull']
+    bears = [x['agent'] for x in voiced if x['sentiment'] == 'bear']
+    neutral = [x['agent'] for x in voiced if x['sentiment'] == 'neutral']
     trades = [dict(a, agent=m['agent'], time=m['_d'].strftime('%H:%M')) for m in reversed(today) for a in m['actions'] if a['type'] in ('open', 'close', 'modify')]
     holds = sorted({m['agent'] for m in today if any(a['type'] == 'hold' for a in m['actions'])} - {t['agent'] for t in trades if t['type'] == 'open'})
     hot = {}
@@ -388,7 +408,7 @@ def discord_digest(feed):
     speakers = sorted({m['agent'] for m in today}, key=ids.index)
     nm = lambda xs: '、'.join(AGENT_META[x]['name'] for x in xs)
     L = [f"{day.strftime('%m/%d')} 共 {len(today)} 則訊息，{len(speakers)} 位發言（{nm(speakers)}）。"]
-    if stance:
+    if voiced:
         L.append(f"大盤看法：偏多 {len(bulls)} 位" + (f"（{nm(bulls)}）" if bulls else '') + f"、中性 {len(neutral)} 位" +
                  (f"（{nm(neutral)}）" if neutral else '') + f"、偏空 {len(bears)} 位" + (f"（{nm(bears)}）" if bears else '') + '。')
     opens = [t for t in trades if t['type'] == 'open']
@@ -658,7 +678,7 @@ def build_state(fast=True):
         'events': events,
         'equity_curve': curve,
         'discord': feed,
-        'digest': discord_digest(feed),
+        'digests': discord_digests(feed),
         'drawdown_curve': dd_series[-400:]
     }
 
