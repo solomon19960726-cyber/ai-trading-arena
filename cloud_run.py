@@ -6,12 +6,13 @@ GitHub Actions 每 15 分鐘跑一次（電腦關機也照跑）：
 3. 盤中每 30 分鐘記一筆五位淨值（data/equity_curve.json）
 4. 產生線上觀戰網頁 docs/index.html ＋ docs/state.json（GitHub Pages）
 5. 每週五美東 20:05 後第一次執行：推每週戰報到 Discord（data/weekly_report_date.txt 防重複）
+6. 每天美東 20:05 後一次：市場掃描（scan.py → docs/scan.txt），重點併進每日戰況
 """
 import os, sys, json, time
 from datetime import datetime, timedelta
 BASE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE)
-import paper, dashboard, live_server
+import paper, dashboard, live_server, scan
 
 DOCS = os.path.join(BASE, 'docs')
 
@@ -79,6 +80,9 @@ def build_brief(st, force=False):
                  f"損益 ${float(t.get('pnl') or 0):+,.2f}" + (f"（{t['r_multiple']}R）" if t.get('r_multiple') is not None else ''))
     if not rec:
         L.append('- 無')
+    sc = scan._load(os.path.join(BASE, 'data', 'scan.json'), None)
+    if sc and sc.get('date', '') >= (n.date() - __import__('datetime').timedelta(days=4)).isoformat():
+        L += [''] + scan.brief_lines(sc)
     L += ['', f'完整觀戰網頁：https://solomon19960726-cyber.github.io/ai-trading-arena/']
     text = '\n'.join(L) + '\n'
     os.makedirs(DOCS, exist_ok=True)
@@ -184,7 +188,8 @@ def build_pages():
     json.dump(st, open(os.path.join(DOCS, 'state.json'), 'w', encoding='utf-8'), ensure_ascii=False)
     open(os.path.join(DOCS, 'index.html'), 'w', encoding='utf-8').write(dashboard.render_html(st))
     open(os.path.join(DOCS, '.nojekyll'), 'w').close()
-    build_brief(st, force='brief' in sys.argv)
+    scan.run(force='scan' in sys.argv, log=paper.log)   # 自己會判斷是不是收盤後該跑的那次；失敗只記錄不中斷
+    build_brief(st, force='brief' in sys.argv or 'scan' in sys.argv)
     if 'weekly-preview' in sys.argv:   # 只印出每週戰報內容，不推送、不寫標記
         n = dashboard.et_now()
         print(weekly_text(st, (n - timedelta(days=(n.weekday() - 4) % 7)).date()))
