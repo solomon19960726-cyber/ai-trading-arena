@@ -410,6 +410,25 @@ BOT_FILE = os.path.join(BASE_DIR, 'discord_bot.txt')       # 第一行：機器�
 LAST_FILE = os.path.join(BASE_DIR, 'data', 'discord_last.json')
 
 
+def mao_advice_message(text, msg_time=None):
+    """Muse／Spark 的顧問貼文 → data/advice/；回傳 True 表示這則是顧問貼文（不管有沒有讀到建議都不進比賽解析）"""
+    import mao
+    m = mao.ADVISOR_TAG.search(text or '')
+    if not m:
+        return False
+    agent = m.group(1).lower()
+    if agent in ('muse', 'spark'):   # Claude／AGY／Codex 的顧問卡片是引擎自己推的，已經存過
+        try:
+            when = datetime.fromisoformat(msg_time).astimezone(dashboard.et_now().tzinfo).isoformat(timespec='seconds') if msg_time else None
+        except Exception:
+            when = None
+        try:
+            mao.record_advice(agent, mao.parse_advice_text(text), when=when, source='discord')
+        except Exception as e:
+            print(f'[顧問] {agent} 建議存檔失敗：{e}', flush=True)
+    return True
+
+
 def detect_agent(text, username=''):
     """開頭的【Muse】／[Spark] 標籤優先，其次看發文者名稱；內文順便提到別人不算"""
     head = normalize(text)[:80]
@@ -493,6 +512,8 @@ def poll_discord():
         text = m.get('content') or ''
         for e in m.get('embeds') or []:
             text += '\n' + (e.get('title') or '') + '\n' + (e.get('description') or '')
+        if mao_advice_message(text, m.get('timestamp')):   # 「【名字】茂持股顧問」：另存顧問建議，絕不當成比賽的開倉／平倉／淨值
+            continue
         agent = detect_agent(text, (m.get('author') or {}).get('username') or '')
         if agent and text.strip():
             try:
