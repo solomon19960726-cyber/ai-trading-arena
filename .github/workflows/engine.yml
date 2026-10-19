@@ -15,6 +15,10 @@ on:
         description: '順便推一張淨值曲線圖到 Discord'
         type: boolean
         default: false
+      scan:
+        description: '順便跑一次市場掃描（不管時間；盤中跑的不擋晚上收盤後那次）'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -39,7 +43,7 @@ jobs:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
           SPARK_LEDGER_CSV_URL: ${{ secrets.SPARK_LEDGER_CSV_URL }}   # 選用：沒設就是空字串，照舊解析 Discord
-        run: python cloud_run.py ${{ inputs.chart && 'chart' || '' }}
+        run: python cloud_run.py ${{ inputs.chart && 'chart' || '' }} ${{ inputs.scan && 'scan' || '' }}
       - name: 把結果存回 repo
         run: |
           git config user.name "arena-engine"
