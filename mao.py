@@ -422,13 +422,19 @@ def summary(quotes=None):
         nav = live_nav(acct, prices)
         days = acct.get('days') or []
         units = {t: round((nav or BASE_VALUE) * x / prices[t], 4) for t, x in w.items() if prices.get(t)}
+        value = nav or acct.get('base', BASE_VALUE)   # 起算前用 US$10,000 分配
+        peak, mdd = acct.get('base', BASE_VALUE), 0.0
+        for v in [d['nav'] for d in days] + ([nav] if nav else []):
+            peak = max(peak, v)
+            mdd = max(mdd, (peak - v) / peak * 100)
         recs = load_advice(months=3)
         return {'start': acct.get('start', MAO_START), 'updated': updated, 'nav': nav,
                 'ret_pct': round((nav / acct.get('base', BASE_VALUE) - 1) * 100, 2) if nav else None,
+                'max_dd_pct': round(mdd, 2), 'cur_dd_pct': round((peak - nav) / peak * 100, 2) if nav else 0.0,
                 'days': [{'date': d['date'], 'nav': d['nav'], 'ret': d['ret']} for d in days],
                 'holdings': [{'ticker': h['ticker'], 'shares': h['shares'], 'cost': h['cost'], 'price': prices.get(h['ticker']),
                               'chg_pct': (quotes or {}).get(h['ticker'], {}).get('chg_pct'), 'weight': round(w.get(h['ticker'], 0) * 100, 2),
-                              'units': units.get(h['ticker'])} for h in sorted(holdings, key=lambda h: -w.get(h['ticker'], 0))],
+                              'units': units.get(h['ticker']), 'alloc': round(value * w.get(h['ticker'], 0), 2)} for h in sorted(holdings, key=lambda h: -w.get(h['ticker'], 0))],
                 'advice': latest_by_ticker(recs), 'leaderboard': leaderboard(load_advice(), prices)}
     except Exception as e:
         return {'error': str(e)}
