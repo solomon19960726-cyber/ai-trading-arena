@@ -13,7 +13,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-20T09:00:35-04:00"
+  "last_check": "2026-10-20T09:15:32-04:00"
  },
  {
   "id": "claude-NVDA-2026-10-19T17:42:12-04:00",
@@ -29,7 +29,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-20T09:00:35-04:00"
+  "last_check": "2026-10-20T09:15:32-04:00"
  },
  {
   "id": "claude-SPCX-2026-10-19T17:42:12-04:00",
@@ -45,7 +45,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-20T09:00:35-04:00"
+  "last_check": "2026-10-20T09:15:32-04:00"
  },
  {
   "id": "muse-AVGO-2026-10-19T17:51:06-04:00",
@@ -119,9 +119,13 @@
   "rr": 2.31,
   "reason": "回測成本區下方設防、保留反彈空間",
   "scored": true,
-  "status": "open",
+  "status": "superseded",
   "source": "paper.py",
-  "last_check": "2026-10-20T09:00:35-04:00"
+  "last_check": "2026-10-20T09:00:35-04:00",
+  "exit": 333.566,
+  "exit_time": "2026-10-20T09:04:30-04:00",
+  "r": -0.17,
+  "ret": -0.633
  },
  {
   "id": "codex-SPCX-2026-10-19T18:00:49-04:00",
@@ -135,9 +139,13 @@
   "rr": 2.23,
   "reason": "現價貼近成本、以近期區間下緣防守",
   "scored": true,
-  "status": "open",
+  "status": "superseded",
   "source": "paper.py",
-  "last_check": "2026-10-20T09:00:35-04:00"
+  "last_check": "2026-10-20T09:00:35-04:00",
+  "exit": 146.73,
+  "exit_time": "2026-10-20T09:04:30-04:00",
+  "r": -0.29,
+  "ret": -1.55
  },
  {
   "id": "codex-NVDA-2026-10-19T18:00:49-04:00",
@@ -151,9 +159,13 @@
   "rr": 2.09,
   "reason": "成本上方整理、以整數支撐設防",
   "scored": true,
-  "status": "open",
+  "status": "superseded",
   "source": "paper.py",
-  "last_check": "2026-10-20T09:00:35-04:00"
+  "last_check": "2026-10-20T09:00:35-04:00",
+  "exit": 216.13,
+  "exit_time": "2026-10-20T09:04:30-04:00",
+  "r": -0.12,
+  "ret": -0.561
  },
  {
   "id": "muse-AVGO-2026-10-20T08:51:40-04:00",
@@ -169,7 +181,7 @@
   "scored": true,
   "status": "open",
   "source": "discord",
-  "last_check": "2026-10-20T09:00:35-04:00"
+  "last_check": "2026-10-20T09:15:32-04:00"
  },
  {
   "id": "muse-SPCX-2026-10-20T08:51:40-04:00",
@@ -185,7 +197,7 @@
   "scored": true,
   "status": "open",
   "source": "discord",
-  "last_check": "2026-10-20T09:00:35-04:00"
+  "last_check": "2026-10-20T09:15:32-04:00"
  },
  {
   "id": "muse-NVDA-2026-10-20T08:51:40-04:00",
@@ -201,6 +213,54 @@
   "scored": true,
   "status": "open",
   "source": "discord",
-  "last_check": "2026-10-20T09:00:35-04:00"
+  "last_check": "2026-10-20T09:15:32-04:00"
+ },
+ {
+  "id": "codex-AVGO-2026-10-20T09:04:30-04:00",
+  "agent": "codex",
+  "ticker": "AVGO",
+  "time": "2026-10-20T09:04:30-04:00",
+  "price": 333.566,
+  "action": "減碼",
+  "stop": 318.0,
+  "target": 360.0,
+  "rr": 1.7,
+  "reason": "部位44%過度集中且現價仍在反彈",
+  "scored": true,
+  "status": "open",
+  "source": "paper.py",
+  "last_check": "2026-10-20T09:15:32-04:00"
+ },
+ {
+  "id": "codex-SPCX-2026-10-20T09:04:30-04:00",
+  "agent": "codex",
+  "ticker": "SPCX",
+  "time": "2026-10-20T09:04:30-04:00",
+  "price": 146.73,
+  "action": "減碼",
+  "stop": 138.0,
+  "target": 166.0,
+  "rr": 2.21,
+  "reason": "財報日波動風險高先降曝險",
+  "scored": true,
+  "status": "open",
+  "source": "paper.py",
+  "last_check": "2026-10-20T09:15:32-04:00"
+ },
+ {
+  "id": "codex-NVDA-2026-10-20T09:04:30-04:00",
+  "agent": "codex",
+  "ticker": "NVDA",
+  "time": "2026-10-20T09:04:30-04:00",
+  "price": 216.13,
+  "action": "續抱",
+  "stop": 204.0,
+  "target": 240.0,
+  "rr": 1.97,
+  "reason": "財報強勁且AI需求維持",
+  "scored": true,
+  "status": "open",
+  "source": "paper.py",
+  "last_check": "2026-10-20T09:15:32-04:00"
  }
 ]
