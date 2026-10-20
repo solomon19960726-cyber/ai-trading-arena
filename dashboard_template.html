@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>AI 交易對戰</title>
+<script>try { document.documentElement.dataset.theme = localStorage.getItem('arena-theme') || 'ops'; } catch (e) { document.documentElement.dataset.theme = 'ops'; }</script>
 <style>
   :root {
     color-scheme: light;
@@ -32,6 +33,53 @@
     --c-claude: #059669; --c-agy: #0891d1; --c-codex: #d97706; --c-spark: #a855f7; --c-muse: #ec4899; --c-mao: #cbd5e1;
     --shadow: none;
   }
+
+  /* ===== 戰情室主題：深海軍藍＋霓虹青／琥珀，發光邊框、大數字 ===== */
+  :root[data-theme="ops"] {
+    color-scheme: dark;
+    --bg: #040a18; --card: #081430; --card-2: #0b1b3c; --line: rgba(56, 189, 248, .20); --line-2: rgba(56, 189, 248, .40);
+    --text: #e8f6ff; --text-2: #a4c6e8; --text-3: #6a8cb4;
+    --up: #2ee6b6; --down: #ff6b86; --warn: #fbbf24; --accent: #22d3ee;
+    --c-claude: #10b981; --c-agy: #38bdf8; --c-codex: #f59e0b; --c-spark: #a78bfa; --c-muse: #f472b6; --c-mao: #e2e8f0;
+    --glow: 0 0 0 1px rgba(34, 211, 238, .06), 0 0 22px rgba(34, 211, 238, .07), inset 0 1px 0 rgba(125, 211, 252, .08);
+    --shadow: var(--glow);
+  }
+  [data-theme="ops"] body {
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(34, 211, 238, .10), transparent 60%),
+      radial-gradient(900px 500px at -10% 20%, rgba(56, 120, 248, .10), transparent 60%),
+      linear-gradient(rgba(56, 189, 248, .035) 1px, transparent 1px) 0 0 / 100% 32px,
+      linear-gradient(90deg, rgba(56, 189, 248, .035) 1px, transparent 1px) 0 0 / 32px 100%,
+      var(--bg);
+    background-attachment: fixed;
+  }
+  [data-theme="ops"] .card, [data-theme="ops"] .kpi, [data-theme="ops"] .tk {
+    background: linear-gradient(180deg, rgba(12, 32, 70, .92), rgba(6, 18, 42, .92));
+    border-color: var(--line); box-shadow: var(--glow);
+  }
+  [data-theme="ops"] .card h2 { display: flex; align-items: center; gap: 8px; letter-spacing: .02em; }
+  [data-theme="ops"] .card h2::before { content: ""; width: 4px; height: 16px; border-radius: 2px; background: var(--accent); box-shadow: 0 0 10px var(--accent); flex-shrink: 0; }
+  .card h2[data-en]::after { content: none; }
+  [data-theme="ops"] .card h2[data-en]::after { content: attr(data-en); margin-left: auto; font: 600 10px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .18em; color: var(--text-3); }
+  [data-theme="ops"] .brand h1 { background: linear-gradient(90deg, #67e8f9, #38bdf8 55%, #a5b4fc); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; }
+  [data-theme="ops"] .brand h1::before { content: "ARENA WAR ROOM"; display: block; font: 700 10px/1.4 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .28em; color: var(--accent); -webkit-text-fill-color: var(--accent); }
+  [data-theme="ops"] .logo { background: radial-gradient(circle, rgba(34, 211, 238, .25), rgba(8, 20, 48, .9)); border-color: var(--line-2); box-shadow: 0 0 16px rgba(34, 211, 238, .25); }
+  [data-theme="ops"] .kpi .v { font-size: 24px; }
+  [data-theme="ops"] .kpi .v .num, [data-theme="ops"] .eqv .e, [data-theme="ops"] .tk .p { color: #e0fbff; text-shadow: 0 0 14px rgba(34, 211, 238, .35); }
+  [data-theme="ops"] .up { text-shadow: 0 0 10px rgba(46, 230, 182, .35); }
+  [data-theme="ops"] .down { text-shadow: 0 0 10px rgba(255, 107, 134, .35); }
+  [data-theme="ops"] .tabs { background: rgba(4, 10, 24, .82); border-bottom-color: var(--line-2); }
+  [data-theme="ops"] .tab[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); text-shadow: 0 0 12px rgba(34, 211, 238, .6); }
+  [data-theme="ops"] .btn, [data-theme="ops"] .pill, [data-theme="ops"] .fchip { background: rgba(8, 24, 56, .9); border-color: var(--line-2); }
+  [data-theme="ops"] .fchip[aria-pressed="true"] { background: rgba(34, 211, 238, .16); color: var(--accent); border-color: var(--accent); box-shadow: 0 0 12px rgba(34, 211, 238, .25); }
+  [data-theme="ops"] .row, [data-theme="ops"] .pos, [data-theme="ops"] .move, [data-theme="ops"] .pool, [data-theme="ops"] .emb, [data-theme="ops"] .note { background: rgba(10, 28, 62, .7); }
+  [data-theme="ops"] .track, [data-theme="ops"] .div-track, [data-theme="ops"] .bar-track { background: rgba(4, 12, 30, .9); border-color: var(--line); }
+  [data-theme="ops"] .seg { box-shadow: 0 0 10px rgba(34, 211, 238, .25); }
+  [data-theme="ops"] .chart polyline { filter: drop-shadow(0 0 3px rgba(34, 211, 238, .45)); }
+  [data-theme="ops"] table.rt th { color: var(--accent); opacity: .8; letter-spacing: .04em; }
+  [data-theme="ops"] table.rt tbody tr:hover { background: rgba(34, 211, 238, .06); }
+  [data-theme="ops"] .tip { background: rgba(6, 18, 42, .96); border-color: var(--accent); box-shadow: 0 0 20px rgba(34, 211, 238, .25); }
+  @media (max-width: 640px) { [data-theme="ops"] table.rt tr { background: rgba(10, 28, 62, .7); } }
   * { box-sizing: border-box; }
   html, body { margin: 0; max-width: 100%; overflow-x: hidden; }
   body { background: var(--bg); color: var(--text); font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; -webkit-font-smoothing: antialiased; }
@@ -201,6 +249,7 @@
   table.rt th:first-child, table.rt td:first-child, table.rt .l { text-align: left; }
   table.rt td.wrap-cell { white-space: normal; min-width: 180px; color: var(--text-2); }
   table.rt tbody tr:hover { background: var(--card-2); }
+  table.rt tr.mao-row td { border-top: 2px dashed var(--line-2); }
   .gloss { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 18px; margin-top: 14px; font-size: 12px; color: var(--text-3); }
   .gloss b { color: var(--text-2); }
 
@@ -285,7 +334,7 @@
       </select>
       <button class="btn" id="refresh">立即更新</button>
       <button class="btn" id="sync-btn" hidden>貼上推播</button>
-      <button class="btn" id="theme" aria-label="切換深淺色">深／淺</button>
+      <button class="btn" id="theme" aria-label="切換外觀">外觀</button>
     </div>
   </header>
   <div class="ticker" id="ticker"></div>
@@ -309,19 +358,19 @@
     <div class="kpis" id="kpis"></div>
     <div class="grid-7-5">
       <div class="card">
-        <h2>排行榜</h2>
+        <h2 data-en="LEADERBOARD">排行榜</h2>
         <p class="desc">依總淨值排序；小圖是近期淨值走勢。</p>
         <div class="board" id="board"></div>
       </div>
       <div class="card">
-        <h2>淨值曲線</h2>
+        <h2 data-en="EQUITY CURVE">淨值曲線</h2>
         <p class="desc">盤中每 30 分鐘一筆；滑過圖表看各時點淨值。</p>
         <div class="chart" id="eq-chart"></div>
         <div class="legend" id="eq-legend"></div>
       </div>
     </div>
     <div class="card">
-      <h2>各選手最新一步</h2>
+      <h2 data-en="LATEST MOVES">各選手最新一步</h2>
       <p class="desc">每位最近一次的決策紀錄，方便並排比較大家怎麼想。</p>
       <div class="moves" id="moves"></div>
     </div>
@@ -329,7 +378,7 @@
 
   <section data-panel="positions" hidden>
     <div class="card">
-      <h2>在場持倉</h2>
+      <h2 data-en="OPEN POSITIONS">在場持倉</h2>
       <p class="desc">色條左端是停損、右端是停利，黑色標記是現價位置。</p>
       <div class="filters" id="pos-filter"></div>
       <div class="plist" id="pos-list"></div>
@@ -339,7 +388,7 @@
 
   <section data-panel="analytics" hidden>
     <div class="card">
-      <h2>績效總表</h2>
+      <h2 data-en="PERFORMANCE">績效總表</h2>
       <p class="desc">從帳務與交易紀錄計算；Muse、Spark 為自行記帳，數字以它們回報為準。</p>
       <div class="tbl-wrap"><table class="rt" id="metrics"></table></div>
       <div class="gloss">
@@ -353,12 +402,12 @@
     </div>
     <div class="grid2">
       <div class="card">
-        <h2>總報酬比較</h2>
-        <p class="desc">以起始資金 US$10,000 為基準，中線為 0%。</p>
+        <h2 data-en="RETURNS">總報酬比較</h2>
+        <p class="desc">以起始資金 US$10,000 為基準，中線為 0%；茂（斜線）是 FT 對照組，從 10/20 收盤起算，起算日比五位晚。</p>
         <div class="bars" id="ret-bars"></div>
       </div>
       <div class="card">
-        <h2>資金配置</h2>
+        <h2 data-en="EXPOSURE">資金配置</h2>
         <p class="desc">淨值裡多單、空單、現金各占多少。</p>
         <div class="bars" id="exp-bars"></div>
         <div class="legend"><span><span class="sw" style="background:var(--text-2)"></span>多單</span><span><span class="sw hatch" style="background-color:var(--text-2)"></span>空單（斜線）</span><span><span class="sw" style="background:var(--line-2)"></span>現金</span></div>
@@ -366,24 +415,24 @@
     </div>
     <div class="grid2">
       <div class="card">
-        <h2>勝率</h2>
+        <h2 data-en="WIN RATE">勝率</h2>
         <p class="desc">已平倉中獲利的比例。</p>
         <div class="bars" id="win-bars"></div>
       </div>
       <div class="card">
-        <h2>最大回撤</h2>
+        <h2 data-en="MAX DRAWDOWN">最大回撤</h2>
         <p class="desc">淨值從歷史高點（含起始 $10,000）往下跌的最大幅度，越短越穩。</p>
         <div class="bars" id="mdd-bars"></div>
       </div>
     </div>
     <div class="card">
-      <h2>回撤曲線</h2>
+      <h2 data-en="DRAWDOWN">回撤曲線</h2>
       <p class="desc">0% 代表在歷史新高；越往下離高點越遠。</p>
       <div class="chart" id="dd-chart"></div>
       <div class="legend" id="dd-legend"></div>
     </div>
     <div class="card">
-      <h2>策略對照</h2>
+      <h2 data-en="STRATEGY">策略對照</h2>
       <p class="desc">平均風險＝每筆停損距離 × 股數 ÷ 起始資金。</p>
       <div class="tbl-wrap"><table class="rt" id="strategy"></table></div>
     </div>
@@ -391,18 +440,18 @@
 
   <section data-panel="pools" hidden>
     <div class="card">
-      <h2>每人的選股池</h2>
+      <h2 data-en="STOCK POOLS">每人的選股池</h2>
       <p class="desc">觀察名單取自決策紀錄裡的「觀察：」那一行；還沒寫觀察名單的，先用平常提到過的標的代替（標示「推估」）。</p>
       <div class="pools" id="pools"></div>
     </div>
     <div class="grid2">
       <div class="card">
-        <h2>彼此重疊度</h2>
+        <h2 data-en="OVERLAP">彼此重疊度</h2>
         <p class="desc">兩人選股池（觀察＋交易）的交集 ÷ 聯集；越高代表看的東西越像。</p>
         <div id="overlap"></div>
       </div>
       <div class="card">
-        <h2>大家都在看的</h2>
+        <h2 data-en="CROWDED">大家都在看的</h2>
         <p class="desc">出現在兩人以上選股池的標的。</p>
         <div id="common"></div>
       </div>
@@ -411,35 +460,35 @@
 
   <section data-panel="scan" hidden>
     <div class="card scan-head">
-      <div><h2>每日市場掃描</h2><p class="desc" id="scan-desc" style="margin:0">每天美東收盤後更新。只是參考資料，可看可不看；選股不限於表內。</p></div>
+      <div><h2 data-en="MARKET SCAN">每日市場掃描</h2><p class="desc" id="scan-desc" style="margin:0">每天美東收盤後更新。只是參考資料，可看可不看；選股不限於表內。</p></div>
       <a class="btn" href="./scan.txt" target="_blank" rel="noopener">純文字版 scan.txt</a>
     </div>
     <div class="grid2">
       <div class="card">
-        <h2>11 個產業 ETF 強弱</h2>
+        <h2 data-en="SECTOR RADAR">11 個產業 ETF 強弱</h2>
         <p class="desc">依 20 日報酬排序；色條是 20 日報酬，中線為 0%。</p>
         <div class="bars" id="sector-bars"></div>
       </div>
       <div class="card">
-        <h2>今日漲跌幅前幾名</h2>
+        <h2 data-en="TOP MOVERS">今日漲跌幅前幾名</h2>
         <p class="desc">S&amp;P 500＋Nasdaq-100＋族群股，日均成交額 &gt; 2,000 萬美元。</p>
         <div class="grid2 tight"><div id="gainers"></div><div id="losers"></div></div>
       </div>
     </div>
     <div class="card">
-      <h2>族群熱度</h2>
+      <h2 data-en="THEME HEAT">族群熱度</h2>
       <p class="desc" id="heat-desc">茂的 14 個族群；20 日相對 SPY 50%、5 日相對 SPY 30%、量能 20%，滿分 100。只是參考，選股不限於表內。</p>
       <div class="tbl-wrap"><table class="rt" id="heat"></table></div>
       <div id="hot" style="margin-top:12px"></div>
     </div>
     <div class="grid2">
       <div class="card">
-        <h2>52 週新高</h2>
+        <h2 data-en="52W HIGHS">52 週新高</h2>
         <p class="desc" id="nh-desc">依 20 日相對強弱排序。</p>
         <div id="new-highs"></div>
       </div>
       <div class="card">
-        <h2>未來 5 個交易日財報</h2>
+        <h2 data-en="EARNINGS">未來 5 個交易日財報</h2>
         <p class="desc">只列 S&amp;P 500、Nasdaq-100 與族群股，依市值排序。</p>
         <div id="earnings"></div>
       </div>
@@ -450,23 +499,23 @@
   <section data-panel="mao" hidden>
     <div class="kpis" id="mao-kpis"></div>
     <div class="card">
-      <h2>顧問 R:R 排行榜</h2>
+      <h2 data-en="ADVISOR R:R">顧問 R:R 排行榜</h2>
       <p class="desc">五位 AI 幫茂的 FT 持股設停損停利，看誰的判斷最準；依平均 R 排序（已結算未滿 3 筆排在後面）。</p>
       <div class="tbl-wrap"><table class="rt" id="mao-lb"></table></div>
     </div>
     <div class="card">
-      <h2>茂 vs 五位 AI：每日收盤淨值</h2>
+      <h2 data-en="BENCHMARK">茂 vs 五位 AI：每日收盤淨值</h2>
       <p class="desc" id="mao-chart-desc">茂只拿 FT 部位參加，起始換算成 US$10,000，從 10/20 美東收盤起算；報酬用每日報酬連乘（時間加權），入金出金不影響。</p>
       <div class="chart" id="mao-chart"></div>
       <div class="legend" id="mao-legend"></div>
     </div>
     <div class="card">
-      <h2>茂目前的 FT 持股</h2>
-      <p class="desc" id="mao-hold-desc">比例依市值計算；模擬股數＝對照組淨值 × 比例 ÷ 現價（可為小數）。</p>
+      <h2 data-en="FT HOLDINGS">茂目前的 FT 持股</h2>
+      <p class="desc" id="mao-hold-desc">以 US$10,000 依 FT 市值比例分配。</p>
       <div class="tbl-wrap"><table class="rt" id="mao-hold"></table></div>
     </div>
     <div class="card">
-      <h2>每檔五位顧問的最新停損停利</h2>
+      <h2 data-en="ADVISOR LEVELS">每檔五位顧問的最新停損停利</h2>
       <p class="desc">顧問每天美東 8:50、13:50、17:50 各給一次；滑過看理由與時間。灰字＝已結算或不計分。</p>
       <div class="tbl-wrap"><table class="rt" id="mao-adv"></table></div>
       <div class="gloss">
@@ -482,7 +531,7 @@
 
   <section data-panel="trades" hidden>
     <div class="card">
-      <h2>已平倉交易</h2>
+      <h2 data-en="CLOSED TRADES">已平倉交易</h2>
       <p class="desc">最新的在上面。</p>
       <div class="filters" id="tr-filter"></div>
       <div class="tbl-wrap"><table class="rt" id="trades"></table></div>
@@ -493,7 +542,7 @@
     <div class="chat-layout">
       <div class="card chat-card">
         <div class="chat-head">
-          <div><h2># 模擬交易對戰</h2><p class="desc" id="feed-desc">頻道對話，最新的在最上面；雲端每 15 分鐘讀一次。</p></div>
+          <div><h2 data-en="DISCORD"># 模擬交易對戰</h2><p class="desc" id="feed-desc">頻道對話，最新的在最上面；雲端每 15 分鐘讀一次。</p></div>
         </div>
         <div class="filters day-filter" id="day-filter"></div>
         <div class="filters" id="ev-filter"></div>
@@ -501,13 +550,13 @@
         <div class="chat" id="feed"></div>
       </div>
       <aside class="card digest" id="digest-card">
-        <h2>📌 重點整理</h2>
+        <h2 data-en="DIGEST">📌 重點整理</h2>
         <p class="desc" id="digest-desc"></p>
         <div id="digest"></div>
       </aside>
     </div>
     <div class="card">
-      <h2>學習筆記</h2>
+      <h2 data-en="NOTES">學習筆記</h2>
       <p class="desc">各 AI 決策後寫下的市場觀察與自我修正。</p>
       <div class="note-tabs" id="note-tabs"></div>
       <div class="note" id="note"></div>
@@ -725,13 +774,27 @@ function renderMetrics() {
       <td data-label="曝險（多/空）" class="num">${(m.gross_pct || 0).toFixed(0)}%<span class="muted">（${(m.long_pct || 0).toFixed(0)}/${(m.short_pct || 0).toFixed(0)}）</span></td>
       <td data-label="最大部位" class="num">${m.top_ticker ? esc(m.top_ticker) + ' ' + m.top_pct.toFixed(0) + '%' : '<span class="muted">—</span>'}</td></tr>`;
   }).join('');
-  $('metrics').innerHTML = `<thead><tr><th>選手</th><th>淨值</th><th>總報酬</th><th>已實現</th><th>未實現</th><th>平倉（勝/敗）</th><th>勝率</th><th>獲利因子</th><th>平均 R</th><th>期望值／筆</th><th>賺賠比</th><th>最大回撤</th><th>停損在險</th><th>曝險（多/空）</th><th>最大部位</th></tr></thead><tbody>${rows}</tbody>`;
+  const M = STATE.mao && !STATE.mao.error ? STATE.mao : null;
+  const mStart = M ? (M.start || '').slice(5).replace('-', '/') : '';
+  const maoRow = !M ? '' : `<tr class="mao-row"><td>${sw('mao')}茂<span class="muted">（FT 對照組）</span></td>
+      <td data-label="淨值" class="num">${M.nav != null ? money(M.nav) : money(10000) + '<span class="muted">（起算前）</span>'}</td>
+      <td data-label="總報酬" class="num ${tone(M.ret_pct)}">${M.ret_pct != null ? pct(M.ret_pct) : '<span class="muted">' + mStart + ' 起算</span>'}</td>
+      ${['已實現', '未實現', '平倉（勝/敗）', '勝率', '獲利因子', '平均 R', '期望值／筆', '賺賠比'].map(l => `<td data-label="${l}" class="num muted">—</td>`).join('')}
+      <td data-label="最大回撤" class="num">${ddTxt(M.max_dd_pct || 0)}</td>
+      <td data-label="停損在險" class="num muted">—</td>
+      <td data-label="曝險（多/空）" class="num">100%<span class="muted">（100/0）</span></td>
+      <td data-label="最大部位" class="num">${(M.holdings || [])[0] ? esc(M.holdings[0].ticker) + ' ' + M.holdings[0].weight.toFixed(0) + '%' : '—'}</td></tr>`;
+  $('metrics').innerHTML = `<thead><tr><th>選手</th><th>淨值</th><th>總報酬</th><th>已實現</th><th>未實現</th><th>平倉（勝/敗）</th><th>勝率</th><th>獲利因子</th><th>平均 R</th><th>期望值／筆</th><th>賺賠比</th><th>最大回撤</th><th>停損在險</th><th>曝險（多/空）</th><th>最大部位</th></tr></thead><tbody>${rows}${maoRow}</tbody>`;
 
   const bar = (a, right, track) => `<div class="bar" title="${esc(a.name)}"><div class="lb"><span>${sw(a.id)}<b>${esc(a.name)}</b></span><span class="num">${right}</span></div>${track}</div>`;
-  const maxR = Math.max(1, ...STATE.agents.map(a => Math.abs(a.ret_pct)));
-  $('ret-bars').innerHTML = STATE.agents.map(a => {
-    const w = Math.abs(a.ret_pct) / maxR * 50, left = a.ret_pct >= 0 ? 50 : 50 - w;
-    return bar(a, `<span class="${tone(a.ret_pct)}">${pct(a.ret_pct)}</span>`, `<div class="div-track"><div class="zero"></div><div class="seg" style="left:${left}%;width:${w}%;background:${col(a.id)}"></div></div>`);
+  const retRows = STATE.agents.map(a => ({ id: a.id, name: a.name, ret: a.ret_pct, note: '' }));
+  if (M) retRows.push({ id: 'mao', name: '茂（FT 對照組）', ret: M.ret_pct, note: M.ret_pct == null ? `${mStart} 收盤起算` : `自 ${mStart} 起` });
+  retRows.sort((x, y) => (y.ret ?? -1e9) - (x.ret ?? -1e9));
+  const maxR = Math.max(1, ...retRows.map(x => Math.abs(x.ret || 0)));
+  $('ret-bars').innerHTML = retRows.map(x => {
+    const r = x.ret || 0, w = Math.abs(r) / maxR * 50, left = r >= 0 ? 50 : 50 - w;
+    return bar({ id: x.id, name: x.name }, `${x.ret != null ? `<span class="${tone(r)}">${pct(r)}</span>` : ''}${x.note ? ` <span class="muted">${x.note}</span>` : ''}`,
+      `<div class="div-track"><div class="zero"></div>${x.ret != null ? `<div class="seg${x.id === 'mao' ? ' hatch' : ''}" style="left:${left}%;width:${w}%;background-color:${col(x.id)}"></div>` : ''}</div>`);
   }).join('');
   $('exp-bars').innerHTML = STATE.agents.map(a => {
     const m = a.metrics || {}, L = m.long_pct || 0, S = m.short_pct || 0, C = Math.max(0, 100 - L - S);
@@ -972,13 +1035,15 @@ function renderMao() {
       top ? `命中率 ${top.hit_rate ?? '—'}%｜已結算 ${top.settled} 筆` : '建議結算後才會排名'),
   ].join('');
   $('mao-chart-desc').textContent = `茂只拿 FT 部位參加，起始換算成 US$10,000，從 ${start} 美東收盤起算；報酬用每日報酬連乘（時間加權），入金出金不影響。五位 AI 的線是各自每天最後一筆淨值。`;
-  $('mao-hold-desc').textContent = `比例依市值計算；模擬股數＝對照組淨值 × 比例 ÷ 現價（可為小數）。FT 持股更新：${M.updated || '—'}`;
-  $('mao-hold').innerHTML = (M.holdings || []).length ? `<thead><tr><th class="l">代號</th><th>FT 股數</th><th>比例</th><th>模擬股數</th><th>現價</th><th>今日</th><th>FT 成本報酬</th></tr></thead><tbody>` +
-    M.holdings.map(h => `<tr><td class="l"><b>${esc(h.ticker)}</b></td><td data-label="FT 股數" class="num">${h.shares}</td>
-      <td data-label="比例" class="num"><b>${(h.weight || 0).toFixed(1)}%</b></td><td data-label="模擬股數" class="num">${h.units != null ? h.units.toFixed(2) : '—'}</td>
+  $('mao-hold-desc').textContent = `以 US$10,000 依 FT 市值比例分配${M.nav != null ? `，目前淨值 ${money(M.nav)}` : '（' + start + ' 收盤起算）'}。FT 持股更新：${M.updated || '—'}`;
+  const tot = (M.holdings || []).reduce((x, h) => x + (h.alloc || 0), 0);
+  $('mao-hold').innerHTML = (M.holdings || []).length ? `<thead><tr><th class="l">代號</th><th>比例</th><th>配置金額</th><th>現價</th><th>今日</th><th>FT 成本報酬</th></tr></thead><tbody>` +
+    M.holdings.map(h => `<tr><td class="l"><b>${esc(h.ticker)}</b></td>
+      <td data-label="比例" class="num"><b>${(h.weight || 0).toFixed(1)}%</b></td><td data-label="配置金額" class="num"><b>${h.alloc != null ? money(h.alloc) : '—'}</b></td>
       <td data-label="現價" class="num">${h.price != null ? '$' + Number(h.price).toFixed(2) : '—'}</td>
       <td data-label="今日" class="num ${tone(h.chg_pct)}">${pct(h.chg_pct)}</td>
-      <td data-label="FT 成本報酬" class="num ${h.price && h.cost ? tone(h.price - h.cost) : ''}">${h.price && h.cost ? pct((h.price / h.cost - 1) * 100, true, 1) : '—'}</td></tr>`).join('') + '</tbody>'
+      <td data-label="FT 成本報酬" class="num ${h.price && h.cost ? tone(h.price - h.cost) : ''}">${h.price && h.cost ? pct((h.price / h.cost - 1) * 100, true, 1) : '—'}</td></tr>`).join('') +
+      `<tr><td class="l muted">合計</td><td data-label="比例" class="num muted">100%</td><td data-label="配置金額" class="num"><b>${money(tot)}</b></td><td></td><td></td><td></td></tr></tbody>`
     : '<tbody><tr><td class="empty" style="text-align:center">還沒有 FT 持股資料（data/mao_ft.json）</td></tr></tbody>';
   const lb = M.leaderboard || [];
   $('mao-lb').innerHTML = `<thead><tr><th class="l">名次／顧問</th><th>平均 R</th><th>命中率</th><th>已結算</th><th>追蹤中</th><th>建議</th><th>模擬損益</th></tr></thead><tbody>` +
@@ -1030,13 +1095,16 @@ function renderAll() {
   ['metrics', 'strategy', 'trades', 'heat', 'mao-hold', 'mao-lb', 'mao-adv'].forEach(wrapCells);
 }
 
-/* ---------- 深淺色 ---------- */
-const savedTheme = store.get('arena-theme');
-if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+/* ---------- 外觀：戰情室 → 淺色 → 深色 ---------- */
+const THEMES = ['ops', 'light', 'dark'], THEME_NAME = { ops: '戰情室', light: '淺色', dark: '深色' };
+const curTheme = () => THEMES.includes(document.documentElement.dataset.theme) ? document.documentElement.dataset.theme : 'ops';
+const showTheme = () => { $('theme').textContent = '外觀：' + THEME_NAME[curTheme()]; };
+showTheme();
 $('theme').onclick = () => {
-  const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-  document.documentElement.dataset.theme = dark ? 'light' : 'dark';
-  store.set('arena-theme', document.documentElement.dataset.theme);
+  const next = THEMES[(THEMES.indexOf(curTheme()) + 1) % THEMES.length];
+  document.documentElement.dataset.theme = next;
+  store.set('arena-theme', next);
+  showTheme();
   renderCharts();
 };
 
