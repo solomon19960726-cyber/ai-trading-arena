@@ -1,5 +1,53 @@
 [
  {
+  "id": "claude-AVGO-2026-10-19T17:42:12-04:00",
+  "agent": "claude",
+  "ticker": "AVGO",
+  "time": "2026-10-19T17:42:12-04:00",
+  "price": 335.35,
+  "action": "減碼",
+  "stop": 324.0,
+  "target": 354.0,
+  "rr": 1.64,
+  "reason": "跌破 10/20/50/100 日均線，逼近半年低點 328.6，已經低於成本；先減碼，跌破 324 就全部出場",
+  "scored": true,
+  "status": "open",
+  "source": "paper.py",
+  "last_check": "2026-10-19T21:45:32-04:00"
+ },
+ {
+  "id": "claude-NVDA-2026-10-19T17:42:12-04:00",
+  "agent": "claude",
+  "ticker": "NVDA",
+  "time": "2026-10-19T17:42:12-04:00",
+  "price": 217.54,
+  "action": "續抱",
+  "stop": 209.0,
+  "target": 232.0,
+  "rr": 1.69,
+  "reason": "從 243 回檔約 10%，量縮，仍站在 100 日線 214.5 上方；停損設在 20 日低點 212.9 之下",
+  "scored": true,
+  "status": "open",
+  "source": "paper.py",
+  "last_check": "2026-10-19T21:45:32-04:00"
+ },
+ {
+  "id": "claude-SPCX-2026-10-19T17:42:12-04:00",
+  "agent": "claude",
+  "ticker": "SPCX",
+  "time": "2026-10-19T17:42:12-04:00",
+  "price": 148.88,
+  "action": "續抱",
+  "stop": 139.0,
+  "target": 168.0,
+  "rr": 1.94,
+  "reason": "回測 50 日線 148.4 有撐，但本週盤後公布 Q3 財報，波動風險大；停損設在 20 日低點 140.7 之下",
+  "scored": true,
+  "status": "open",
+  "source": "paper.py",
+  "last_check": "2026-10-19T21:45:32-04:00"
+ },
+ {
   "id": "muse-AVGO-2026-10-19T17:51:06-04:00",
   "agent": "muse",
   "ticker": "AVGO",
@@ -13,7 +61,7 @@
   "scored": true,
   "status": "open",
   "source": "discord",
-  "last_check": "2026-10-19T21:30:27-04:00"
+  "last_check": "2026-10-19T21:45:32-04:00"
  },
  {
   "id": "muse-SPCX-2026-10-19T17:51:06-04:00",
@@ -29,7 +77,7 @@
   "scored": true,
   "status": "open",
   "source": "discord",
-  "last_check": "2026-10-19T21:30:27-04:00"
+  "last_check": "2026-10-19T21:45:32-04:00"
  },
  {
   "id": "muse-NVDA-2026-10-19T17:51:06-04:00",
@@ -45,7 +93,7 @@
   "scored": true,
   "status": "open",
   "source": "discord",
-  "last_check": "2026-10-19T21:30:27-04:00"
+  "last_check": "2026-10-19T21:45:32-04:00"
  },
  {
   "id": "codex-AVGO-2026-10-19T18:00:49-04:00",
@@ -61,7 +109,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-19T21:30:27-04:00"
+  "last_check": "2026-10-19T21:45:32-04:00"
  },
  {
   "id": "codex-SPCX-2026-10-19T18:00:49-04:00",
@@ -77,7 +125,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-19T21:30:27-04:00"
+  "last_check": "2026-10-19T21:45:32-04:00"
  },
  {
   "id": "codex-NVDA-2026-10-19T18:00:49-04:00",
@@ -93,6 +141,6 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-19T21:30:27-04:00"
+  "last_check": "2026-10-19T21:45:32-04:00"
  }
 ]
