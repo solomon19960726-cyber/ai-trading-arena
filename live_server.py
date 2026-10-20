@@ -102,7 +102,9 @@ SHORT_RE = re.compile(r'(?i:放空|做空|空單|賣空|short)')
 LONG_RE = re.compile(r'(?i:做多|多單|買進|買入|long|buy)')
 CLOSE_KW_RE = re.compile(r'(停損|停利|平倉|出場|了結|回補)(?!價|距|位|單|設|點|線)')
 MODIFY_RE = re.compile(r'調整|移動|移至|移到|上移|下移|上調|下調|改為|改到|設為|設在|保本|拉高|拉到|新停損|新停利|距|若|如果|預計|計畫')
-EXIT_PRICE_RE = re.compile(r'@\s*\$?\s*(\d+(?:\.\d+)?)|(?:出場價?|成交價|平倉價|回補價|價格|於)\s*[:|]?\s*' + NUM)
+EXIT_PRICE_RE = re.compile(r'@\s*\$?\s*(\d+(?:\.\d+)?)|(?:出場價?|成交價|平倉價|回補價|價格|於)\s*[:|]?\s*' + NUM +
+                           r'|(?:開盤價|收盤價|市價)\s*[:|]?\s*' + NUM +
+                           r'|' + NUM + r'\s*(?:觸價|觸發)?\s*(?:平倉|停損出場|停利出場|出場)')
 CASH_RE = re.compile(r'(?:可用)?現金(?:僅|約|剩|餘額)?\s*[:|]?\s*(?:US)?\$\s*(\d+(?:\.\d+)?)(?![\d.%])')
 EQ_RE = re.compile(r'(?<!起始)(?:帳戶)?(?:總)?(?i:淨值|總資產|資產淨值|帳戶價值|帳戶總值|equity|NAV)(?!變化|變動|增減|報酬|曲線)'
                    r'[^\d\n+\-]{0,15}?(?:US)?\$?\s*(\d+(?:\.\d+)?)(?![\d.%])')
@@ -182,15 +184,19 @@ def parse_message(text, known=()):
         if not kw:
             continue
         tk = next((x for x in _tickers(line) if x in known and x not in seen), None)
+        if not tk:   # 「成交判定：…以開盤價 US$716.14 觸價平倉」沒寫代號：沿用前 3 行最近提到的已知持倉
+            tk = next((x for back in lines[max(0, i - 3):i][::-1] for x in _tickers(back) if x in known and x not in seen), None)
         px = _first(EXIT_PRICE_RE, line[kw.start():]) or _first(EXIT_PRICE_RE, line)
         if tk and px:
             closes.append((kw.group(1), tk, float(px)))
     cash = _first(CASH_RE, t)
     eq = None
-    for m in EQ_RE.finditer(t):
-        v = float(m.group(1))
-        if 1000 <= v <= 10_000_000:
-            eq = v
+    for line in lines:
+        if re.search(r'第\s*\d+\s*名|名次|排名|戰況', line):
+            continue
+        m = EQ_RE.search(line)
+        if m and 1000 <= float(m.group(1)) <= 10_000_000:
+            eq = float(m.group(1))
             break
     return {'opens': opens, 'closes': closes, 'cash': float(cash) if cash else None, 'equity': eq}
 
@@ -249,6 +255,14 @@ def sync_message(agent, text, msg_time=None):
 CORR_FILE = os.path.join(BASE_DIR, 'data', 'ext_corrections.json')
 
 
+def _finish_trade(rec):
+    """依進出場價算損益與 R"""
+    pnl = (rec['exit'] - rec['entry']) * rec['qty'] * (1 if rec['side'] == 'long' else -1)
+    risk = abs(rec['entry'] - rec.get('stop0', rec['stop'])) * rec['qty']
+    rec['pnl'], rec['r_multiple'] = round(pnl, 2), (round(pnl / risk, 2) if risk else None)
+    return rec
+
+
 def apply_corrections(log=print):
     """套用 data/ext_corrections.json：依倉位 id 改指定欄位（持倉或已平倉都找），每筆只套用一次；找不到就略過"""
     try:
@@ -263,15 +277,21 @@ def apply_corrections(log=print):
         info = ext.get(c.get('agent'))
         if not info or c.get('id') in info.get('corrections_applied', []):
             continue
-        rec = next((x for x in info.get('positions', []) + info.get('trades', []) if x.get('id') == c.get('position_id')), None)
-        if not rec:
-            log(f"[修正] {c.get('id')}：找不到倉位 {c.get('position_id')}，略過")
-            continue
-        rec.update(c.get('set') or {})
-        if 'exit' in rec and 'set' in c:   # 已平倉：損益與 R 跟著重算
-            pnl = (rec['exit'] - rec['entry']) * rec['qty'] * (1 if rec['side'] == 'long' else -1)
-            risk = abs(rec['entry'] - rec.get('stop0', rec['stop'])) * rec['qty']
-            rec['pnl'], rec['r_multiple'] = round(pnl, 2), (round(pnl / risk, 2) if risk else None)
+        if c.get('add_trade'):   # 解析器漏記的已平倉單：補一筆（現金已由當時的回報校正，這裡不動現金）
+            info.setdefault('trades', []).append(_finish_trade(dict(c['add_trade'], agent=c['agent'], id=c.get('position_id'))))
+        else:
+            rec = next((x for x in info.get('positions', []) + info.get('trades', []) if x.get('id') == c.get('position_id')), None)
+            if not rec:
+                log(f"[修正] {c.get('id')}：找不到倉位 {c.get('position_id')}，略過")
+                continue
+            if c.get('close'):   # 解析器沒認出平倉：把持倉移到已平倉（現金已由回報校正，不動現金）
+                info['positions'] = [x for x in info['positions'] if x is not rec]
+                info.setdefault('trades', []).append(_finish_trade(dict(rec, **c['close'])))
+            else:
+                rec.update(c.get('set') or {})
+                if 'exit' in rec and 'set' in c:   # 已平倉：損益與 R 跟著重算
+                    _finish_trade(rec)
+        info.update(c.get('info_set') or {})
         info.setdefault('corrections_applied', []).append(c['id'])
         done.append(c['id'])
         log(f"[修正] 已套用 {c['id']}：{c.get('reason', '')}")
