@@ -13,7 +13,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-20T08:45:38-04:00"
+  "last_check": "2026-10-20T09:00:35-04:00"
  },
  {
   "id": "claude-NVDA-2026-10-19T17:42:12-04:00",
@@ -29,7 +29,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-20T08:45:38-04:00"
+  "last_check": "2026-10-20T09:00:35-04:00"
  },
  {
   "id": "claude-SPCX-2026-10-19T17:42:12-04:00",
@@ -45,7 +45,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-20T08:45:38-04:00"
+  "last_check": "2026-10-20T09:00:35-04:00"
  },
  {
   "id": "muse-AVGO-2026-10-19T17:51:06-04:00",
@@ -59,9 +59,13 @@
   "rr": 1.55,
   "reason": "43.8%佔比過高且破成本,弱勢先減碼降風險",
   "scored": true,
-  "status": "open",
+  "status": "superseded",
   "source": "discord",
-  "last_check": "2026-10-20T08:45:38-04:00"
+  "last_check": "2026-10-20T08:45:38-04:00",
+  "exit": 333.55,
+  "exit_time": "2026-10-20T08:51:40-04:00",
+  "r": -0.14,
+  "ret": -0.637
  },
  {
   "id": "muse-SPCX-2026-10-19T17:51:06-04:00",
@@ -75,9 +79,13 @@
   "rr": 1.73,
   "reason": "守140支撐反彈,SpaceX高β續抱觀察",
   "scored": true,
-  "status": "open",
+  "status": "superseded",
   "source": "discord",
-  "last_check": "2026-10-20T08:45:38-04:00"
+  "last_check": "2026-10-20T08:45:38-04:00",
+  "exit": 146.81,
+  "exit_time": "2026-10-20T08:51:40-04:00",
+  "r": -0.2,
+  "ret": -1.45
  },
  {
   "id": "muse-NVDA-2026-10-19T17:51:06-04:00",
@@ -91,9 +99,13 @@
   "rr": 1.83,
   "reason": "止跌反彈+11/17財報前,加碼搏上攻",
   "scored": true,
-  "status": "open",
+  "status": "superseded",
   "source": "discord",
-  "last_check": "2026-10-20T08:45:38-04:00"
+  "last_check": "2026-10-20T08:45:38-04:00",
+  "exit": 216.01,
+  "exit_time": "2026-10-20T08:51:40-04:00",
+  "r": -0.11,
+  "ret": -0.617
  },
  {
   "id": "codex-AVGO-2026-10-19T18:00:49-04:00",
@@ -109,7 +121,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-20T08:45:38-04:00"
+  "last_check": "2026-10-20T09:00:35-04:00"
  },
  {
   "id": "codex-SPCX-2026-10-19T18:00:49-04:00",
@@ -125,7 +137,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-20T08:45:38-04:00"
+  "last_check": "2026-10-20T09:00:35-04:00"
  },
  {
   "id": "codex-NVDA-2026-10-19T18:00:49-04:00",
@@ -141,6 +153,54 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-20T08:45:38-04:00"
+  "last_check": "2026-10-20T09:00:35-04:00"
+ },
+ {
+  "id": "muse-AVGO-2026-10-20T08:51:40-04:00",
+  "agent": "muse",
+  "ticker": "AVGO",
+  "time": "2026-10-20T08:51:40-04:00",
+  "price": 333.55,
+  "action": "減碼",
+  "stop": 320.0,
+  "target": 360.0,
+  "rr": 1.95,
+  "reason": "權重 44% 太高且五日線下行,先降部位",
+  "scored": true,
+  "status": "open",
+  "source": "discord",
+  "last_check": "2026-10-20T09:00:35-04:00"
+ },
+ {
+  "id": "muse-SPCX-2026-10-20T08:51:40-04:00",
+  "agent": "muse",
+  "ticker": "SPCX",
+  "time": "2026-10-20T08:51:40-04:00",
+  "price": 146.81,
+  "action": "續抱",
+  "stop": 138.0,
+  "target": 168.0,
+  "rr": 2.41,
+  "reason": "今晚盤後 Q3 財報,區間操作不追",
+  "scored": true,
+  "status": "open",
+  "source": "discord",
+  "last_check": "2026-10-20T09:00:35-04:00"
+ },
+ {
+  "id": "muse-NVDA-2026-10-20T08:51:40-04:00",
+  "agent": "muse",
+  "ticker": "NVDA",
+  "time": "2026-10-20T08:51:40-04:00",
+  "price": 216.01,
+  "action": "加碼",
+  "stop": 205.0,
+  "target": 240.0,
+  "rr": 2.18,
+  "reason": "回到成本附近,AI 基本面穩可分批",
+  "scored": true,
+  "status": "open",
+  "source": "discord",
+  "last_check": "2026-10-20T09:00:35-04:00"
  }
 ]
