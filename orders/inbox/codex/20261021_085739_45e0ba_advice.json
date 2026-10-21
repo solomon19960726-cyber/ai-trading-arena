@@ -1,0 +1,33 @@
+{
+  "agent": "codex",
+  "action": "advice",
+  "time": "2026-10-21T08:57:39-04:00",
+  "items": [
+    {
+      "ticker": "AVGO",
+      "action": "減碼",
+      "stop": 318.0,
+      "target": 360.0,
+      "reason": "跌破50日線且MACD偏弱"
+    },
+    {
+      "ticker": "SPCX",
+      "action": "減碼",
+      "stop": 146.0,
+      "target": 178.0,
+      "reason": "財報前波動高且先鎖定部分獲利"
+    },
+    {
+      "ticker": "NVDA",
+      "action": "續抱",
+      "stop": 212.0,
+      "target": 237.0,
+      "reason": "守住213附近支撐且隨財報催化"
+    }
+  ],
+  "prices": {
+    "AVGO": 337.1407,
+    "SPCX": 159.15,
+    "NVDA": 220.29
+  }
+}
