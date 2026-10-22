@@ -33,7 +33,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-22T14:10:31-04:00"
+  "last_check": "2026-10-22T14:15:36-04:00"
  },
  {
   "id": "claude-SPCX-2026-10-19T17:42:12-04:00",
@@ -49,7 +49,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-22T14:10:31-04:00"
+  "last_check": "2026-10-22T14:15:36-04:00"
  },
  {
   "id": "muse-AVGO-2026-10-19T17:51:06-04:00",
@@ -185,7 +185,7 @@
   "scored": true,
   "status": "open",
   "source": "discord",
-  "last_check": "2026-10-22T14:10:31-04:00"
+  "last_check": "2026-10-22T14:15:36-04:00"
  },
  {
   "id": "muse-SPCX-2026-10-20T08:51:40-04:00",
@@ -201,7 +201,7 @@
   "scored": true,
   "status": "open",
   "source": "discord",
-  "last_check": "2026-10-22T14:10:31-04:00"
+  "last_check": "2026-10-22T14:15:36-04:00"
  },
  {
   "id": "muse-NVDA-2026-10-20T08:51:40-04:00",
@@ -217,7 +217,7 @@
   "scored": true,
   "status": "open",
   "source": "discord",
-  "last_check": "2026-10-22T14:10:31-04:00"
+  "last_check": "2026-10-22T14:15:36-04:00"
  },
  {
   "id": "codex-AVGO-2026-10-20T09:04:30-04:00",
@@ -591,9 +591,13 @@
   "rr": 1.95,
   "reason": "成本下方且部位過度集中,先守近期支撐",
   "scored": true,
-  "status": "open",
+  "status": "superseded",
   "source": "paper.py",
-  "last_check": "2026-10-22T14:10:31-04:00"
+  "last_check": "2026-10-22T14:10:31-04:00",
+  "exit": 323.8,
+  "exit_time": "2026-10-22T14:02:25-04:00",
+  "r": -0.26,
+  "ret": -0.933
  },
  {
   "id": "codex-SPCX-2026-10-22T08:57:31-04:00",
@@ -607,9 +611,13 @@
   "rr": 2.01,
   "reason": "財報後波動放大且盤前走弱,先降低風險",
   "scored": true,
-  "status": "open",
+  "status": "superseded",
   "source": "paper.py",
-  "last_check": "2026-10-22T14:10:31-04:00"
+  "last_check": "2026-10-22T14:10:31-04:00",
+  "exit": 145.307,
+  "exit_time": "2026-10-22T14:02:25-04:00",
+  "r": -0.8,
+  "ret": -6.035
  },
  {
   "id": "codex-NVDA-2026-10-22T08:57:31-04:00",
@@ -623,8 +631,60 @@
   "rr": 2.02,
   "reason": "仍守成本附近與關鍵整數支撐,等待AI需求催化",
   "scored": true,
+  "status": "superseded",
+  "source": "paper.py",
+  "last_check": "2026-10-22T14:10:31-04:00",
+  "exit": 212.08,
+  "exit_time": "2026-10-22T14:02:25-04:00",
+  "r": -0.39,
+  "ret": -2.078
+ },
+ {
+  "id": "codex-AVGO-2026-10-22T14:02:25-04:00",
+  "agent": "codex",
+  "ticker": "AVGO",
+  "time": "2026-10-22T14:02:25-04:00",
+  "price": 323.8,
+  "action": "減碼",
+  "stop": 315.0,
+  "target": 350.0,
+  "rr": 2.98,
+  "reason": "跌破324支撐且仍弱於主要均線",
+  "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-22T14:10:31-04:00"
+  "last_check": "2026-10-22T14:15:36-04:00"
+ },
+ {
+  "id": "codex-SPCX-2026-10-22T14:02:25-04:00",
+  "agent": "codex",
+  "ticker": "SPCX",
+  "time": "2026-10-22T14:02:25-04:00",
+  "price": 145.307,
+  "action": "減碼",
+  "stop": 140.0,
+  "target": 158.0,
+  "rr": 2.39,
+  "reason": "財報利多後回吐並跌破145至147支撐區",
+  "scored": true,
+  "status": "open",
+  "source": "paper.py",
+  "last_check": "2026-10-22T14:15:36-04:00"
+ },
+ {
+  "id": "codex-NVDA-2026-10-22T14:02:25-04:00",
+  "agent": "codex",
+  "ticker": "NVDA",
+  "time": "2026-10-22T14:02:25-04:00",
+  "price": 212.08,
+  "action": "減碼",
+  "stop": 207.0,
+  "target": 225.0,
+  "rr": 2.54,
+  "reason": "跌破約213短線支撐且弱於大盤",
+  "scored": true,
+  "status": "open",
+  "source": "paper.py",
+  "last_check": "2026-10-22T14:15:36-04:00"
  }
 ]
