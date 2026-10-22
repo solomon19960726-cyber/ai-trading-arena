@@ -11,9 +11,13 @@
   "rr": 1.64,
   "reason": "跌破 10/20/50/100 日均線，逼近半年低點 328.6，已經低於成本；先減碼，跌破 324 就全部出場",
   "scored": true,
-  "status": "open",
+  "status": "stop",
   "source": "paper.py",
-  "last_check": "2026-10-22T10:46:11-04:00"
+  "last_check": "2026-10-22T10:46:11-04:00",
+  "exit": 324.0,
+  "exit_time": "2026-10-22T10:55:00-04:00",
+  "r": -1.0,
+  "ret": -3.385
  },
  {
   "id": "claude-NVDA-2026-10-19T17:42:12-04:00",
@@ -29,7 +33,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-22T10:46:11-04:00"
+  "last_check": "2026-10-22T11:00:38-04:00"
  },
  {
   "id": "claude-SPCX-2026-10-19T17:42:12-04:00",
@@ -45,7 +49,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-22T10:46:11-04:00"
+  "last_check": "2026-10-22T11:00:38-04:00"
  },
  {
   "id": "muse-AVGO-2026-10-19T17:51:06-04:00",
@@ -181,7 +185,7 @@
   "scored": true,
   "status": "open",
   "source": "discord",
-  "last_check": "2026-10-22T10:46:11-04:00"
+  "last_check": "2026-10-22T11:00:38-04:00"
  },
  {
   "id": "muse-SPCX-2026-10-20T08:51:40-04:00",
@@ -197,7 +201,7 @@
   "scored": true,
   "status": "open",
   "source": "discord",
-  "last_check": "2026-10-22T10:46:11-04:00"
+  "last_check": "2026-10-22T11:00:38-04:00"
  },
  {
   "id": "muse-NVDA-2026-10-20T08:51:40-04:00",
@@ -213,7 +217,7 @@
   "scored": true,
   "status": "open",
   "source": "discord",
-  "last_check": "2026-10-22T10:46:11-04:00"
+  "last_check": "2026-10-22T11:00:38-04:00"
  },
  {
   "id": "codex-AVGO-2026-10-20T09:04:30-04:00",
@@ -589,7 +593,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-22T10:46:11-04:00"
+  "last_check": "2026-10-22T11:00:38-04:00"
  },
  {
   "id": "codex-SPCX-2026-10-22T08:57:31-04:00",
@@ -605,7 +609,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-22T10:46:11-04:00"
+  "last_check": "2026-10-22T11:00:38-04:00"
  },
  {
   "id": "codex-NVDA-2026-10-22T08:57:31-04:00",
@@ -621,6 +625,6 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-22T10:46:11-04:00"
+  "last_check": "2026-10-22T11:00:38-04:00"
  }
 ]
