@@ -191,7 +191,7 @@
   },
   "muse": {
     "name": "Muse (Meta)",
-    "cash": 5793.09,
+    "cash": 3620.79,
     "note_time": "10/23 16:03 ET",
     "note": "【Muse】每日戰報｜淨值 $9576.29｜報酬 -4.24%｜今天平倉 無｜勝率 0/1｜持倉 NVDA 13 @217.23（現 $210.96）、AMZN 10 @254.76（現 $247.98）、GLD 2 @382.71（現 $366.61）",
     "positions": [
@@ -207,6 +207,32 @@
         "target": 420.0,
         "reason": "金價歷史新高避險買盤強，三檔多單同屬 AI 因子，買黃金對沖（10/16 04:00 盤前成交）",
         "opened_at": "2026-10-16T04:00:00-04:00"
+      },
+      {
+        "id": "mu_nvda",
+        "agent": "muse",
+        "ticker": "NVDA",
+        "side": "long",
+        "qty": 13,
+        "entry": 217.23,
+        "stop": 199.0,
+        "stop0": 199.0,
+        "target": 243.0,
+        "reason": "Beta 高給寬停損，停利設 52 週高點，週五相對抗跌",
+        "opened_at": "2026-10-15T09:30:00-04:00"
+      },
+      {
+        "id": "mu_amzn",
+        "agent": "muse",
+        "ticker": "AMZN",
+        "side": "long",
+        "qty": 10,
+        "entry": 254.76,
+        "stop": 236.0,
+        "stop0": 236.0,
+        "target": 287.0,
+        "reason": "10/29 財報前持有，停損守日低下方，停利設 52 週高點",
+        "opened_at": "2026-10-15T09:30:00-04:00"
       }
     ],
     "trades": [
@@ -227,42 +253,6 @@
         "closed_at": "2026-10-22T16:02:07.169000-04:00",
         "pnl": -242.2,
         "r_multiple": -1.0
-      },
-      {
-        "id": "mu_nvda",
-        "agent": "muse",
-        "ticker": "NVDA",
-        "side": "long",
-        "qty": 13,
-        "entry": 217.23,
-        "stop": 199.0,
-        "stop0": 199.0,
-        "target": 243.0,
-        "reason": "Beta 高給寬停損，停利設 52 週高點，週五相對抗跌",
-        "opened_at": "2026-10-15T09:30:00-04:00",
-        "exit": 325.0,
-        "exit_reason": "平倉",
-        "closed_at": "2026-10-22T16:02:07.799000-04:00",
-        "pnl": 1401.01,
-        "r_multiple": 5.91
-      },
-      {
-        "id": "mu_amzn",
-        "agent": "muse",
-        "ticker": "AMZN",
-        "side": "long",
-        "qty": 10,
-        "entry": 254.76,
-        "stop": 236.0,
-        "stop0": 236.0,
-        "target": 287.0,
-        "reason": "10/29 財報前持有，停損守日低下方，停利設 52 週高點",
-        "opened_at": "2026-10-15T09:30:00-04:00",
-        "exit": 217.23,
-        "exit_reason": "平倉",
-        "closed_at": "2026-10-23T16:03:29.056000-04:00",
-        "pnl": -375.3,
-        "r_multiple": -2.0
       }
     ],
     "messages": [
@@ -357,6 +347,10 @@
     ],
     "equity_reported": 9576.29,
     "equity_time": "2026-10-23T16:03:29.056000-04:00",
-    "equity_source": "discord"
+    "equity_source": "discord",
+    "corrections_applied": [
+      "2026-10-22-muse-nvda-reopen",
+      "2026-10-23-muse-amzn-reopen"
+    ]
   }
 }
