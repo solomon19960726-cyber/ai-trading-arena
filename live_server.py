@@ -101,6 +101,7 @@ TARGET_RE = re.compile(r'(?i:停利價?|止盈價?|目標價?|take\s*profit|targ
 SHORT_RE = re.compile(r'(?i:放空|做空|空單|賣空|short)')
 LONG_RE = re.compile(r'(?i:做多|多單|買進|買入|long|buy)')
 CLOSE_KW_RE = re.compile(r'(停損|停利|平倉|出場|了結|回補)(?!價|距|位|單|設|點|線)')
+NO_CLOSE_RE = re.compile(r'(?:無|沒有|没有|尚無|未)\s*(?:任何)?(?:停損|停利|平倉|出場)|(?:停損|停利|平倉|出場)\s*[:：]?\s*(?:無|沒有|没有|0\s*筆|none)')
 MODIFY_RE = re.compile(r'調整|移動|移至|移到|上移|下移|上調|下調|改為|改到|設為|設在|保本|拉高|拉到|新停損|新停利|距|若|如果|預計|計畫')
 EXIT_PRICE_RE = re.compile(r'@\s*\$?\s*(\d+(?:\.\d+)?)|(?:出場價?|成交價|平倉價|回補價|價格|於)\s*[:|]?\s*' + NUM +
                            r'|(?:開盤價|收盤價|市價)\s*[:|]?\s*' + NUM +
@@ -180,15 +181,18 @@ def parse_message(text, known=()):
     for i, line in enumerate(lines):
         if i in open_lines or MODIFY_RE.search(line):
             continue
-        kw = CLOSE_KW_RE.search(line)
-        if not kw:
-            continue
-        tk = next((x for x in _tickers(line) if x in known and x not in seen), None)
-        if not tk:   # 「成交判定：…以開盤價 US$716.14 觸價平倉」沒寫代號：沿用前 3 行最近提到的已知持倉
-            tk = next((x for back in lines[max(0, i - 3):i][::-1] for x in _tickers(back) if x in known and x not in seen), None)
-        px = _first(EXIT_PRICE_RE, line[kw.start():]) or _first(EXIT_PRICE_RE, line)
-        if tk and px:
-            closes.append((kw.group(1), tk, float(px)))
+        for seg in re.split(r'[|｜]', line):   # 戰報常把「今天平倉 GOOGL…｜持倉 NVDA 13 @217.23」塞同一行：一段一段判斷
+            kw = CLOSE_KW_RE.search(seg)
+            if not kw or NO_CLOSE_RE.search(seg):
+                continue
+            mentioned = _tickers(seg)
+            if mentioned:   # 這段有寫代號：只認已知持倉；寫的是別檔（已平掉的）就跳過，不能改抓別段的
+                tk = next((x for x in mentioned if x in known and x not in seen), None)
+            else:           # 「成交判定：…以開盤價 US$716.14 觸價平倉」沒寫代號：沿用前 3 行最近提到的已知持倉
+                tk = next((x for back in lines[max(0, i - 3):i][::-1] for x in _tickers(back) if x in known and x not in seen), None)
+            px = _first(EXIT_PRICE_RE, seg[kw.start():]) or _first(EXIT_PRICE_RE, seg)
+            if tk and px:
+                closes.append((kw.group(1), tk, float(px)))
     cash = _first(CASH_RE, t)
     eq = None
     for line in lines:
@@ -284,7 +288,11 @@ def apply_corrections(log=print):
             if not rec:
                 log(f"[修正] {c.get('id')}：找不到倉位 {c.get('position_id')}，略過")
                 continue
-            if c.get('close'):   # 解析器沒認出平倉：把持倉移到已平倉（現金已由回報校正，不動現金）
+            if c.get('reopen'):   # 解析器誤判平倉：把已平倉那筆還原成持倉（現金用 info_set 校正）
+                info['trades'] = [x for x in info['trades'] if x is not rec]
+                info.setdefault('positions', []).append({k: v for k, v in rec.items()
+                                                         if k not in ('exit', 'exit_reason', 'closed_at', 'pnl', 'r_multiple')})
+            elif c.get('close'):   # 解析器沒認出平倉：把持倉移到已平倉（現金已由回報校正，不動現金）
                 info['positions'] = [x for x in info['positions'] if x is not rec]
                 info.setdefault('trades', []).append(_finish_trade(dict(rec, **c['close'])))
             else:

@@ -171,12 +171,40 @@ class PriceAndCorrections(unittest.TestCase):
             L.EXT_FILE, L.CORR_FILE = old
             shutil.rmtree(tmp)
 
+    MUSE_REPORT = ("【Muse】每日戰報｜淨值 $9,620.14｜今天平倉 GOOGL 10股 @$325（停損，-$242.20，R -1.0）"
+                   "｜勝率 0勝1敗｜持倉 NVDA 13、AMZN 10、GLD 2（現金 $3,620.79）\n"
+                   "【Muse】每日戰報｜淨值 $9576.29｜今天平倉 無｜勝率 0/1｜持倉 NVDA 13 @217.23（現 $210.96）、AMZN 10 @254.76")
+
+    def test_report_line_does_not_close_other_holdings(self):
+        # GOOGL 已先被平掉，第二則戰報再提到「今天平倉 GOOGL @325」時，不能改抓同一行「持倉 NVDA」去平倉
+        self.assertEqual(L.parse_message(self.MUSE_REPORT, known={'NVDA', 'AMZN', 'GLD'})['closes'], [])
+        self.assertEqual(L.parse_message('今天平倉 無｜持倉 AMZN 10 @254.76', known={'AMZN'})['closes'], [])
+        self.assertEqual(L.parse_message(self.MUSE_REPORT, known={'GOOGL', 'NVDA'})['closes'], [('平倉', 'GOOGL', 325.0)])
+
+    def test_reopen_correction_restores_position(self):
+        tmp, old = tempfile.mkdtemp(), (L.EXT_FILE, L.CORR_FILE)
+        try:
+            L.EXT_FILE, L.CORR_FILE = os.path.join(tmp, 'e.json'), os.path.join(tmp, 'c.json')
+            json.dump({'muse': {'cash': 5793.09, 'positions': [], 'trades': [
+                {'id': 'mu_nvda', 'ticker': 'NVDA', 'side': 'long', 'qty': 13, 'entry': 217.23, 'stop': 199, 'stop0': 199, 'target': 243,
+                 'exit': 325.0, 'exit_reason': '平倉', 'closed_at': 'x', 'pnl': 1401.01, 'r_multiple': 5.91}]}}, open(L.EXT_FILE, 'w'))
+            json.dump({'corrections': [{'id': 'r1', 'agent': 'muse', 'position_id': 'mu_nvda', 'reopen': True,
+                                        'info_set': {'cash': 3620.79}, 'reason': 'x'}]}, open(L.CORR_FILE, 'w'))
+            L.apply_corrections(log=lambda m: None)
+            e = json.load(open(L.EXT_FILE))['muse']
+            self.assertEqual((e['trades'], e['cash']), ([], 3620.79))
+            self.assertEqual(e['positions'], [{'id': 'mu_nvda', 'ticker': 'NVDA', 'side': 'long', 'qty': 13, 'entry': 217.23,
+                                               'stop': 199, 'stop0': 199, 'target': 243}])
+        finally:
+            L.EXT_FILE, L.CORR_FILE = old
+            shutil.rmtree(tmp)
+
     def test_repo_correction_file_is_valid(self):
         with open(os.path.join(os.path.dirname(L.EXT_FILE), 'ext_corrections.json'), encoding='utf-8') as f:
             items = json.load(f)['corrections']
         self.assertEqual(len({c['id'] for c in items}), len(items))
         for c in items:
-            self.assertTrue(c['reason'] and (c.get('set') or c.get('close') or c.get('add_trade')) and c['agent'] in ('muse', 'spark'))
+            self.assertTrue(c['reason'] and (c.get('set') or c.get('close') or c.get('add_trade') or c.get('reopen')) and c['agent'] in ('muse', 'spark'))
 
 
 class WatchLineDashboard(unittest.TestCase):
