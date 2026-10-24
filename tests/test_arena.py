@@ -135,12 +135,48 @@ class PriceAndCorrections(unittest.TestCase):
             L.EXT_FILE, L.CORR_FILE = old
             shutil.rmtree(tmp)
 
+    CLOSE = """📌 5分K持倉檢核與觸價平倉：
+• 部位 POS-002（做多 QQQ 4 股，開倉價 $722.41，停損價 $717.00）
+• 5分K觸發檢核：週二美東 04:00 第一根 5 分 K 跳空開在 $716.14（跌破停損價 $717.00）。
+• 成交判定：依規則 5「跳空越過就用開盤價成交」，正式以開盤價 US$716.14 觸價平倉！
+• 平倉結算：已實現損益 -US$25.08（每股 -$6.27，實現 -1.16R）
+🏆 戰況：Spark 目前第 4 名（淨值 $9,978.36，與第 3 名僅差約 $15）
+💼 帳戶即時快照：
+• 總淨值：US$9,966.64（-0.33%）
+• 可用現金：US$9,966.64（100% 現金）"""
+
+    def test_close_without_ticker_and_rank_line_equity(self):
+        r = L.parse_message(self.CLOSE, known={'QQQ'})
+        self.assertEqual(r['closes'], [('平倉', 'QQQ', 716.14)])
+        self.assertEqual((r['cash'], r['equity']), (9966.64, 9966.64))   # 名次行的淨值不能當成自己的
+
+    def test_close_and_add_trade_corrections(self):
+        tmp, old = tempfile.mkdtemp(), (L.EXT_FILE, L.CORR_FILE)
+        try:
+            L.EXT_FILE, L.CORR_FILE = os.path.join(tmp, 'e.json'), os.path.join(tmp, 'c.json')
+            json.dump({'spark': {'cash': 9966.64, 'trades': [], 'positions': [
+                {'id': 'sp1', 'ticker': 'QQQ', 'side': 'long', 'qty': 4, 'entry': 722.41, 'stop': 717, 'stop0': 717, 'target': 734.5}]}},
+                open(L.EXT_FILE, 'w'))
+            json.dump({'corrections': [
+                {'id': 'c1', 'agent': 'spark', 'position_id': 'sp1', 'close': {'exit': 716.14}, 'info_set': {'equity_reported': 9966.64}, 'reason': 'x'},
+                {'id': 'c2', 'agent': 'spark', 'position_id': 'sp0', 'reason': 'x', 'add_trade': {
+                    'ticker': 'QQQ', 'side': 'short', 'qty': 4, 'entry': 718.12, 'stop': 714.5, 'stop0': 723.57, 'target': 706.5, 'exit': 720.19}}]},
+                open(L.CORR_FILE, 'w'))
+            L.apply_corrections(log=lambda m: None)
+            L.apply_corrections(log=lambda m: None)   # 第二次不會重複套用
+            e = json.load(open(L.EXT_FILE))['spark']
+            self.assertEqual((e['positions'], e['cash'], e['equity_reported']), ([], 9966.64, 9966.64))
+            self.assertEqual([(t['pnl'], t['r_multiple']) for t in e['trades']], [(-25.08, -1.16), (-8.28, -0.38)])
+        finally:
+            L.EXT_FILE, L.CORR_FILE = old
+            shutil.rmtree(tmp)
+
     def test_repo_correction_file_is_valid(self):
         with open(os.path.join(os.path.dirname(L.EXT_FILE), 'ext_corrections.json'), encoding='utf-8') as f:
             items = json.load(f)['corrections']
         self.assertEqual(len({c['id'] for c in items}), len(items))
         for c in items:
-            self.assertTrue(c['reason'] and c['set'] and c['agent'] in ('muse', 'spark'))
+            self.assertTrue(c['reason'] and (c.get('set') or c.get('close') or c.get('add_trade')) and c['agent'] in ('muse', 'spark'))
 
 
 class WatchLineDashboard(unittest.TestCase):
