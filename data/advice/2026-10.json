@@ -33,7 +33,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-27T08:30:33-04:00"
+  "last_check": "2026-10-27T08:45:31-04:00"
  },
  {
   "id": "claude-SPCX-2026-10-19T17:42:12-04:00",
@@ -49,7 +49,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-27T08:30:33-04:00"
+  "last_check": "2026-10-27T08:45:31-04:00"
  },
  {
   "id": "muse-AVGO-2026-10-19T17:51:06-04:00",
@@ -185,7 +185,7 @@
   "scored": true,
   "status": "open",
   "source": "discord",
-  "last_check": "2026-10-27T08:30:33-04:00"
+  "last_check": "2026-10-27T08:45:31-04:00"
  },
  {
   "id": "muse-SPCX-2026-10-20T08:51:40-04:00",
@@ -201,7 +201,7 @@
   "scored": true,
   "status": "open",
   "source": "discord",
-  "last_check": "2026-10-27T08:30:33-04:00"
+  "last_check": "2026-10-27T08:45:31-04:00"
  },
  {
   "id": "muse-NVDA-2026-10-20T08:51:40-04:00",
@@ -217,7 +217,7 @@
   "scored": true,
   "status": "open",
   "source": "discord",
-  "last_check": "2026-10-27T08:30:33-04:00"
+  "last_check": "2026-10-27T08:45:31-04:00"
  },
  {
   "id": "codex-AVGO-2026-10-20T09:04:30-04:00",
@@ -771,9 +771,13 @@
   "rr": 2.33,
   "reason": "跌破320且半導體同步走弱",
   "scored": true,
-  "status": "open",
+  "status": "target",
   "source": "paper.py",
-  "last_check": "2026-10-27T08:30:33-04:00"
+  "last_check": "2026-10-27T08:30:33-04:00",
+  "exit": 340.0,
+  "exit_time": "2026-10-27T08:30:00-04:00",
+  "r": 2.33,
+  "ret": 5.886
  },
  {
   "id": "codex-SPCX-2026-10-23T08:56:38-04:00",
@@ -789,7 +793,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-27T08:30:33-04:00"
+  "last_check": "2026-10-27T08:45:31-04:00"
  },
  {
   "id": "codex-NVDA-2026-10-23T08:56:38-04:00",
@@ -805,6 +809,6 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-27T08:30:33-04:00"
+  "last_check": "2026-10-27T08:45:31-04:00"
  }
 ]
