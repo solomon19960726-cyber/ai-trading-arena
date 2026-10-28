@@ -312,6 +312,40 @@
     table.rt td.wrap-cell::before { display: block; margin-bottom: 2px; }
     .tbl-wrap { overflow-x: visible; }
   }
+  /* ===== 城市經營（遊戲化回放）===== */
+  .city-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .city-bar .grow { flex: 1 1 200px; min-width: 0; display: flex; align-items: center; gap: 10px; }
+  .city-bar input[type=range] { flex: 1; min-width: 0; accent-color: var(--accent); }
+  .city-time { font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; }
+  .city-play { min-width: 64px; }
+  .city-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+  .city { position: relative; border: 1px solid var(--line); border-radius: 12px; background: var(--card-2); overflow: hidden; cursor: pointer; transition: border-color .2s, transform .2s; }
+  .city:hover { border-color: var(--line-2); }
+  .city[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .city-hd { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 10px 12px 0; }
+  .city-hd .nm { font-weight: 800; font-size: 14px; display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .city-hd .rk { font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 99px; background: var(--card); border: 1px solid var(--line); color: var(--text-2); }
+  .city-hd .eq { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 14px; white-space: nowrap; }
+  .city-sub { display: flex; justify-content: space-between; gap: 8px; padding: 2px 12px 0; font-size: 11px; color: var(--text-3); }
+  .city canvas { display: block; width: 100%; height: 230px; }
+  .city-ft { display: flex; justify-content: space-between; gap: 8px; padding: 0 12px 10px; font-size: 11px; color: var(--text-3); }
+  .city-ft b { color: var(--text-2); font-variant-numeric: tabular-nums; }
+  .city-pop { position: absolute; left: 50%; top: 58px; transform: translateX(-50%); pointer-events: none; font-size: 13px; font-weight: 800; white-space: nowrap;
+    padding: 3px 10px; border-radius: 99px; background: color-mix(in srgb, var(--card) 85%, transparent); border: 1px solid var(--line); animation: cityPop 2.4s ease-out forwards; }
+  @keyframes cityPop { 0% { opacity: 0; transform: translate(-50%, 8px); } 12% { opacity: 1; transform: translate(-50%, 0); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -14px); } }
+  .city-cols { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 12px; margin-top: 12px; align-items: start; }
+  .city-log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; font-size: 13px; }
+  .city-log li { display: flex; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+  .city-log li .t { color: var(--text-3); font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 11px; padding-top: 2px; }
+  .city-log li.new { animation: cityFlash 1.2s ease-out; }
+  @keyframes cityFlash { from { background: color-mix(in srgb, var(--accent) 18%, transparent); } to { background: transparent; } }
+  .city-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 11px; color: var(--text-3); margin-top: 10px; }
+  .city-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .city-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .city-detail .reason { color: var(--text-3); font-size: 12px; }
+  @media (max-width: 980px) { .city-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .city-cols { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 560px) { .city-bar .grow { order: 5; flex-basis: 100%; } .city-grid { gap: 8px; } .city canvas { height: 160px; }
+    .city-hd { padding: 8px 8px 0; flex-wrap: wrap; } .city-hd .nm, .city-hd .eq { font-size: 12px; } .city-sub, .city-ft { padding-left: 8px; padding-right: 8px; } .city-ft { flex-direction: column; gap: 0; } .city-pop { font-size: 11px; } }
 </style>
 </head>
 <body>
@@ -343,6 +377,7 @@
 <nav class="tabs" role="tablist">
   <div class="wrap">
     <button class="tab" role="tab" data-tab="overview">總覽</button>
+    <button class="tab" role="tab" data-tab="city">城市經營</button>
     <button class="tab" role="tab" data-tab="positions">持倉</button>
     <button class="tab" role="tab" data-tab="analytics">績效分析</button>
     <button class="tab" role="tab" data-tab="pools">選股池</button>
@@ -525,6 +560,38 @@
         <div><b>命中率</b>：先碰停利 ÷（先碰停利＋先碰停損）。<b>平均 R</b>：所有已結算（含到期、被更新）的 R 平均。</div>
         <div><b>模擬損益</b>：每筆建議投入 US$1,000、照它的停損停利出場的損益總和。</div>
         <div><b>不計分</b>：沒有給出「停損 &lt; 當時價格 &lt; 停利」的建議照樣列出，但不算進排行。AI 建議不會讓茂帳戶自動出場。</div>
+      </div>
+    </div>
+  </section>
+
+  <section data-panel="city" hidden>
+    <div class="card">
+      <h2 data-en="ARENA CITY">城市經營：六座城的興衰回放</h2>
+      <p class="desc">每位 AI（加上茂的 FT 對照組）各經營一座城：持股是大樓（高度＝部位成本、顏色＝族群），金庫是現金，淨值越高城越繁榮。按播放從開賽回放到現在，點一座城看它當下的持股和理由。</p>
+      <div class="city-bar">
+        <button class="btn city-play" id="city-play">▶ 播放</button>
+        <select class="btn" id="city-speed" aria-label="播放速度">
+          <option value="1">1×</option><option value="3" selected>3×</option><option value="8">8×</option><option value="20">20×</option>
+        </select>
+        <div class="grow">
+          <input type="range" id="city-slider" min="0" max="0" value="0" aria-label="時間軸" />
+          <span class="city-time" id="city-time">—</span>
+        </div>
+        <button class="btn" id="city-sound" aria-pressed="false">🔇 音效關</button>
+      </div>
+      <div class="city-grid" id="city-grid"></div>
+      <div class="city-legend" id="city-legend"></div>
+    </div>
+    <div class="city-cols">
+      <div class="card city-detail">
+        <h2 id="city-d-title">城市資訊</h2>
+        <p class="desc" id="city-d-desc">點上面任一座城，看它在這個時間點的持股。</p>
+        <div class="tbl-wrap"><table class="rt" id="city-d-tbl"></table></div>
+      </div>
+      <div class="card">
+        <h2 data-en="EVENTS">事件播報</h2>
+        <p class="desc">回放到的買進、平倉、超車都會出現在這裡（最新在上）。</p>
+        <ul class="city-log" id="city-log"></ul>
       </div>
     </div>
   </section>
@@ -1069,8 +1136,421 @@ function renderMao() {
 }
 const ADV_IDS = ['claude', 'agy', 'codex', 'spark', 'muse'];
 
+/* ---------- 城市經營（遊戲化回放） ---------- */
+const City = (() => {
+  const CIDS = ['claude', 'agy', 'codex', 'spark', 'muse', 'mao'];
+  const GROUP_COLOR = {
+    'MEGA7': '#0ea5e9', '半導體': '#6366f1', 'CPU': '#8b5cf6', '記憶體': '#a855f7', '光通訊': '#06b6d4', '算力': '#3b82f6',
+    'AI軟體': '#14b8a6', '電力': '#f59e0b', '大盤指數': '#94a3b8', '科技': '#60a5fa', '金融': '#22c55e', '醫療': '#2dd4bf',
+    '能源': '#f97316', '工業': '#a3a3a3', '非必需消費': '#f472b6', '必需消費': '#fb7185', '公用事業': '#84cc16', '原物料': '#d97706',
+    '房地產': '#c084fc', '通訊服務': '#38bdf8', '黃金／商品': '#eab308', '債券': '#64748b', '其他': '#9ca3af'
+  };
+  const PALETTE = ['#ef4444', '#10b981', '#e879f9', '#facc15', '#22d3ee', '#fb923c', '#4ade80', '#818cf8'];
+  const LOT_ORDER = [[1, 1], [2, 1], [1, 2], [2, 2], [0, 1], [1, 0], [2, 0], [0, 0], [3, 1], [3, 0], [0, 2], [3, 2], [1, 3], [2, 3], [3, 3]];
+  const VAULT = [0, 3];
+  let frames = [], evByFrame = [], allEvents = [], idx = 0, playing = false, acc = 0, lastT = 0, sound = false, sel = null;
+  let cities = {}, built = false, raf = 0, colors = {}, ac = null, lastSnd = {};
+
+  /* ---- 時間 ---- */
+  const etOff = (m, d) => ((m > 3 && m < 11) || (m === 3 && d >= 8)) ? '-04:00' : '-05:00';
+  const pad = n => String(n).padStart(2, '0');
+  function curveTimes(curve) {
+    let y = +String(STATE.updated_et || '').slice(0, 4) || new Date().getFullYear();
+    const out = new Array(curve.length); let prevM = 99;
+    for (let i = curve.length - 1; i >= 0; i--) {
+      const m = +curve[i].t.slice(0, 2), d = +curve[i].t.slice(3, 5), hm = curve[i].t.slice(6, 11);
+      if (m > prevM) y--; prevM = m;
+      out[i] = Date.parse(`${y}-${pad(m)}-${pad(d)}T${hm}:00${etOff(m, d)}`);
+    }
+    return out;
+  }
+  const etLabel = ts => {
+    const s = new Date(ts).toLocaleString('zh-TW', { timeZone: 'America/New_York', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, weekday: 'short' });
+    return '美東 ' + s;
+  };
+  const dayTs = d => Date.parse(`${d}T16:00:00${etOff(+d.slice(5, 7), +d.slice(8, 10))}`);
+
+  /* ---- 族群 ---- */
+  let GMAP = {};
+  function buildGroups() {
+    GMAP = {};
+    const etf = STATE.etf_group || {};
+    Object.entries(etf).forEach(([t, g]) => GMAP[t] = g);
+    Object.entries(STATE.themes || {}).forEach(([g, list]) => (list || []).forEach(t => { if (!GMAP[t]) GMAP[t] = g; }));
+  }
+  const groupOf = tk => GMAP[tk] || '其他';
+  const gColor = g => GROUP_COLOR[g] || PALETTE[[...g].reduce((s, c) => s + c.charCodeAt(0), 0) % PALETTE.length];
+
+  /* ---- 資料 ---- */
+  function buildData() {
+    buildGroups();
+    const curve = (STATE.equity_curve || []).filter(p => p && p.t && p.equity);
+    const ts = curveTimes(curve);
+    frames = curve.map((p, i) => ({ ts: ts[i], eq: { ...p.equity } }));
+    const nowTs = Date.parse(String(STATE.updated_et || '').replace(' ET', '').replace(' ', 'T') + etOff(+String(STATE.updated_et).slice(5, 7), +String(STATE.updated_et).slice(8, 10)));
+    if (!isNaN(nowTs) && (!frames.length || nowTs > frames[frames.length - 1].ts + 60000)) {
+      const eq = {}; STATE.agents.forEach(a => eq[a.id] = a.equity);
+      frames.push({ ts: nowTs, eq });
+    }
+    const mdays = ((STATE.mao || {}).days || []).map(d => ({ ts: dayTs(d.date), nav: d.nav }));
+    const maoNow = (STATE.mao || {}).nav;
+    frames.forEach((f, i) => {
+      let nav = null; for (const d of mdays) if (d.ts <= f.ts) nav = d.nav;
+      if (i === frames.length - 1 && maoNow != null && mdays.length && f.ts >= mdays[0].ts) nav = maoNow;
+      f.eq.mao = nav;
+    });
+    // 交易
+    const seen = new Set(), trades = [];
+    STATE.agents.forEach(a => [...(a.positions || []), ...(a.trades || [])].forEach(t => {
+      const k = (t.agent || a.id) + '|' + (t.id || t.ticker + t.opened_at);
+      if (seen.has(k)) return; seen.add(k);
+      trades.push({ ...t, agent: t.agent || a.id, o: Date.parse(t.opened_at), c: t.closed_at ? Date.parse(t.closed_at) : null });
+    }));
+    City.trades = trades.filter(t => !isNaN(t.o));
+    // 事件
+    const fi = ts => { let lo = 0, hi = frames.length - 1; if (ts > frames[hi].ts) return hi; while (lo < hi) { const m = (lo + hi) >> 1; if (frames[m].ts >= ts) hi = m; else lo = m + 1; } return lo; };
+    allEvents = [];
+    if (frames.length) {
+      City.trades.forEach(t => {
+        allEvents.push({ ts: t.o, f: fi(t.o), agent: t.agent, kind: 'buy', t });
+        if (t.c) allEvents.push({ ts: t.c, f: fi(t.c), agent: t.agent, kind: (t.pnl || 0) >= 0 ? 'win' : 'loss', t });
+      });
+      let lead = null;
+      frames.forEach((f, i) => {
+        const r = rankAt(i); if (!r.length) return;
+        if (lead && r[0] !== lead) allEvents.push({ ts: f.ts, f: i, agent: r[0], kind: 'lead', prev: lead });
+        lead = r[0];
+      });
+      if (mdays.length) allEvents.push({ ts: mdays[0].ts, f: fi(mdays[0].ts), agent: 'mao', kind: 'join' });
+    }
+    allEvents.sort((a, b) => a.ts - b.ts);
+    evByFrame = frames.map(() => []);
+    allEvents.forEach(e => evByFrame[e.f].push(e));
+  }
+  function rankAt(i) {
+    const f = frames[i]; if (!f) return [];
+    return IDS.filter(id => f.eq[id] != null).sort((a, b) => f.eq[b] - f.eq[a]);
+  }
+  function holdingsAt(id, i) {
+    const f = frames[i]; if (!f) return [];
+    if (id === 'mao') {
+      const m = STATE.mao || {}; if (f.eq.mao == null) return [];
+      const k = m.nav ? f.eq.mao / m.nav : 1;
+      return (m.holdings || []).map(h => ({ key: 'mao|' + h.ticker, ticker: h.ticker, side: 'long', value: (h.alloc || 0) * k, weight: h.weight, mao: true }));
+    }
+    return City.trades.filter(t => t.agent === id && t.o <= f.ts && (!t.c || t.c > f.ts))
+      .sort((a, b) => a.o - b.o)
+      .map(t => ({ key: id + '|' + (t.id || t.ticker + t.opened_at), ticker: t.ticker, side: t.side, value: (t.qty || 0) * (t.entry || 0), t }));
+  }
+  const cashAt = (id, i, hs) => {
+    const eq = frames[i] && frames[i].eq[id]; if (eq == null) return 0;
+    if (id === 'mao') return 0;
+    const lv = hs.filter(h => h.side !== 'short').reduce((s, h) => s + h.value, 0);
+    return Math.max(0, eq - lv);
+  };
+  const level = eq => eq == null ? '空地' : eq >= 10300 ? '大都會' : eq >= 10100 ? '繁榮城市' : eq >= 9900 ? '小城' : eq >= 9700 ? '小鎮' : '荒村';
+
+  /* ---- DOM ---- */
+  function buildDom() {
+    $('city-grid').innerHTML = CIDS.map(id => `<div class="city" id="city-${id}" data-id="${id}" role="button" tabindex="0" aria-pressed="false">
+      <div class="city-hd"><span class="nm">${sw(id)}${esc(NAME[id])}<span class="rk" id="city-rk-${id}">—</span></span><span class="eq" id="city-eq-${id}">—</span></div>
+      <div class="city-sub"><span id="city-lv-${id}">—</span><span id="city-ret-${id}">—</span></div>
+      <canvas id="city-cv-${id}"></canvas>
+      <div class="city-ft"><span id="city-b-${id}">—</span><span id="city-c-${id}">—</span></div></div>`).join('');
+    CIDS.forEach(id => {
+      cities[id] = { bld: new Map(), parts: [], lots: {} };
+      const el = $('city-' + id);
+      const pick = () => { sel = sel === id ? null : id; CIDS.forEach(c => $('city-' + c).setAttribute('aria-pressed', c === sel)); renderDetail(); };
+      el.onclick = pick; el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } };
+    });
+    $('city-play').onclick = () => { if (!frames.length) return; if (!playing && idx >= frames.length - 1) jump(0, true); playing = !playing; acc = 0; updPlay(); };
+    $('city-slider').oninput = e => { playing = false; updPlay(); jump(+e.target.value, false); };
+    $('city-sound').onclick = () => {
+      sound = !sound;
+      if (sound && !ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { sound = false; } }
+      if (ac && ac.state === 'suspended') ac.resume();
+      $('city-sound').textContent = sound ? '🔊 音效開' : '🔇 音效關';
+      $('city-sound').setAttribute('aria-pressed', sound);
+      if (sound) sfx('buy');
+    };
+    const sp = store.get('arena-city-speed'); if (sp) $('city-speed').value = sp;
+    $('city-speed').onchange = e => store.set('arena-city-speed', e.target.value);
+    built = true;
+  }
+  const updPlay = () => { $('city-play').textContent = playing ? '❚❚ 暫停' : '▶ 播放'; };
+
+  /* ---- 跳到某一格 ---- */
+  function jump(i, fx) {
+    const prev = idx; idx = Math.max(0, Math.min(frames.length - 1, i));
+    $('city-slider').value = idx;
+    $('city-time').textContent = frames[idx] ? etLabel(frames[idx].ts) : '—';
+    CIDS.forEach(id => syncCity(id, !fx));
+    if (fx && idx > prev) for (let k = prev + 1; k <= idx; k++) evByFrame[k].forEach(fire);
+    renderHeads(); renderLog(fx && idx > prev ? prev : null); renderDetail();
+  }
+  function syncCity(id, instant) {
+    const c = cities[id], hs = holdingsAt(id, idx), keep = new Set();
+    hs.forEach(h => {
+      keep.add(h.key);
+      const target = 14 + 78 * Math.sqrt(Math.min(h.value, 9000) / 9000);
+      let b = c.bld.get(h.key);
+      if (!b) {
+        const used = new Set([...c.bld.values()].filter(x => x.target > 0).map(x => x.lot.join()));
+        const lot = LOT_ORDER.find(l => !used.has(l.join())) || LOT_ORDER[c.bld.size % LOT_ORDER.length];
+        b = { lot, h: instant ? target : 0, target, tk: h.ticker, side: h.side, color: gColor(groupOf(h.ticker)) };
+        c.bld.set(h.key, b);
+      }
+      b.target = target; if (instant) b.h = target;
+    });
+    c.bld.forEach((b, k) => { if (!keep.has(k)) { b.target = 0; if (instant) c.bld.delete(k); } });
+    if (instant) c.parts = [];
+    c.cash = cashAt(id, idx, hs);
+  }
+
+  /* ---- 事件特效 ---- */
+  function fire(e) {
+    const c = cities[e.agent]; if (!c) return;
+    const t = e.t || {};
+    const b = t.id ? c.bld.get(e.agent + '|' + t.id) : null;
+    const pos = b ? b.lot : [1.5, 1.5];
+    if (e.kind === 'buy') { popText(e.agent, `🏗️ ${t.side === 'short' ? '放空' : '買進'} ${t.ticker}`, 'var(--accent)'); sfx('buy'); }
+    if (e.kind === 'win') { burst(e.agent, pos, b ? b.h : 40, true); popText(e.agent, `🎆 ${t.ticker} ${money0(t.pnl, true)}`, 'var(--up)'); sfx('win'); }
+    if (e.kind === 'loss') { burst(e.agent, pos, b ? b.h : 30, false); popText(e.agent, `💥 ${t.ticker} ${money0(t.pnl, true)}`, 'var(--down)'); sfx('loss'); }
+    if (e.kind === 'lead') { popText(e.agent, '👑 登上第一名', 'var(--warn)'); burst(e.agent, [1.5, 1.5], 70, true); sfx('lead'); }
+    if (e.kind === 'join') popText('mao', '🚩 茂的 FT 城開城', 'var(--accent)');
+  }
+  function popText(id, txt, color) {
+    const el = $('city-' + id); if (!el) return;
+    const p = document.createElement('div'); p.className = 'city-pop'; p.style.color = color; p.textContent = txt;
+    p.style.top = (58 + el.querySelectorAll('.city-pop').length * 26) + 'px';
+    el.appendChild(p); setTimeout(() => p.remove(), 2400);
+  }
+  function burst(id, lot, h, good) {
+    const c = cities[id]; const g = c.geo; if (!g) return;
+    const [x, y] = tileC(g, lot[0], lot[1]);
+    const cols = good ? ['#facc15', '#34d399', '#60a5fa', '#f472b6', '#fb923c'] : ['#9ca3af', '#6b7280', '#d1d5db', '#f87171'];
+    for (let k = 0; k < (good ? 46 : 28); k++) {
+      const a = Math.random() * Math.PI * 2, s = good ? 1 + Math.random() * 2.6 : 0.3 + Math.random() * 1.1;
+      c.parts.push({ x, y: y - h, vx: Math.cos(a) * s, vy: good ? Math.sin(a) * s - 1.2 : -Math.random() * 1.2 - 0.3, life: 1, decay: 0.012 + Math.random() * 0.012, g: good ? 0.035 : -0.005, r: good ? 2 : 3 + Math.random() * 3, color: cols[k % cols.length], smoke: !good });
+    }
+  }
+  function sfx(kind) {
+    if (!sound || !ac) return;
+    const now = performance.now(); if (now - (lastSnd[kind] || 0) < 160) return; lastSnd[kind] = now;
+    const tone = (f, d, type, v, at = 0, f2) => {
+      const o = ac.createOscillator(), g = ac.createGain(), t0 = ac.currentTime + at;
+      o.type = type; o.frequency.setValueAtTime(f, t0); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + d);
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(v, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+      o.connect(g).connect(ac.destination); o.start(t0); o.stop(t0 + d + 0.02);
+    };
+    if (kind === 'buy') { tone(520, 0.08, 'square', 0.05); tone(780, 0.1, 'square', 0.05, 0.08); }
+    if (kind === 'win') [523, 659, 784, 1047].forEach((f, k) => tone(f, 0.16, 'triangle', 0.09, k * 0.08));
+    if (kind === 'loss') tone(220, 0.45, 'sawtooth', 0.06, 0, 90);
+    if (kind === 'lead') { tone(880, 0.3, 'sine', 0.1); tone(1320, 0.45, 'sine', 0.08, 0.12); }
+  }
+
+  /* ---- 文字面板 ---- */
+  function renderHeads() {
+    const f = frames[idx]; if (!f) return;
+    const r = rankAt(idx);
+    CIDS.forEach(id => {
+      const eq = f.eq[id], c = cities[id];
+      const rk = r.indexOf(id);
+      $('city-rk-' + id).textContent = id === 'mao' ? '對照組' : rk === 0 ? '👑 第1' : rk > 0 ? `第${rk + 1}` : '—';
+      $('city-eq-' + id).textContent = eq == null ? '尚未開城' : money0(eq);
+      const ret = eq == null ? null : (eq / 10000 - 1) * 100;
+      $('city-ret-' + id).innerHTML = ret == null ? '—' : `<span class="${tone(ret)}">${pct(ret)}</span>`;
+      $('city-lv-' + id).textContent = level(eq);
+      const n = [...c.bld.values()].filter(b => b.target > 0).length;
+      $('city-b-' + id).innerHTML = `大樓 <b>${n}</b> 棟`;
+      $('city-c-' + id).innerHTML = id === 'mao' ? 'FT 實際持股' : `金庫 <b>${money0(c.cash)}</b>${eq ? `（${Math.round(c.cash / eq * 100)}%）` : ''}`;
+    });
+  }
+  function evText(e) {
+    const t = e.t || {}, nm = `${sw(e.agent)}<b>${esc(NAME[e.agent])}</b>`;
+    if (e.kind === 'buy') return `🏗️ ${nm} ${t.side === 'short' ? '放空' : '買進'} <b>${esc(t.ticker)}</b> ${t.qty} 股 @ ${money(t.entry)}<span class="muted">（${esc(groupOf(t.ticker))}）</span>`;
+    if (e.kind === 'win' || e.kind === 'loss') return `${e.kind === 'win' ? '🎆' : '💥'} ${nm} 平倉 <b>${esc(t.ticker)}</b>（${esc(shortReason(t.exit_reason))}）<span class="${tone(t.pnl)}">${money(t.pnl, true)}</span>${t.r_multiple != null ? ` <span class="muted">${t.r_multiple}R</span>` : ''}`;
+    if (e.kind === 'lead') return `👑 ${nm} 超越 ${esc(NAME[e.prev])}，登上第一名`;
+    if (e.kind === 'join') return `🚩 ${nm} 加入對照（起始換算 US$10,000）`;
+    return '';
+  }
+  const shortReason = r => { const x = String(r || '出場').split(/[：:]/)[0].trim(); return x.length > 12 ? x.slice(0, 12) + '…' : x; };
+  function renderLog(fromFrame) {
+    const list = allEvents.filter(e => e.f <= idx).slice(-60).reverse();
+    $('city-log').innerHTML = list.length ? list.map(e => `<li class="${fromFrame != null && e.f > fromFrame ? 'new' : ''}"><span class="t">${esc(etLabel(e.ts).replace('美東 ', ''))}</span><span>${evText(e)}</span></li>`).join('') : '<li class="muted">還沒有事件，按播放開始。</li>';
+  }
+  function renderDetail() {
+    const f = frames[idx];
+    if (!sel || !f) { $('city-d-title').textContent = '城市資訊'; $('city-d-desc').textContent = '點上面任一座城，看它在這個時間點的持股。'; $('city-d-tbl').innerHTML = ''; return; }
+    const eq = f.eq[sel], hs = holdingsAt(sel, idx), r = rankAt(idx).indexOf(sel);
+    $('city-d-title').innerHTML = `${sw(sel)}${esc(NAME[sel])} 城 · ${sel === 'mao' ? '對照組' : r >= 0 ? '第 ' + (r + 1) + ' 名' : ''}`;
+    const closed = (City.trades || []).filter(t => t.agent === sel && t.c && t.c <= f.ts);
+    const realized = closed.reduce((s, t) => s + (t.pnl || 0), 0), wins = closed.filter(t => (t.pnl || 0) > 0).length;
+    $('city-d-desc').innerHTML = `${esc(etLabel(f.ts))}｜淨值 <b>${eq == null ? '—' : money(eq)}</b>${eq == null ? '' : `（<span class="${tone(eq - 10000)}">${pct((eq / 10000 - 1) * 100)}</span>）`}｜${level(eq)}`
+      + (sel === 'mao' ? '' : `｜已平倉 ${closed.length} 筆、勝 ${wins}、已實現 <span class="${tone(realized)}">${money(realized, true)}</span>`);
+    if (!hs.length) { $('city-d-tbl').innerHTML = '<tbody><tr><td class="empty" style="text-align:center">這個時間點沒有持股（全現金）</td></tr></tbody>'; return; }
+    $('city-d-tbl').innerHTML = sel === 'mao'
+      ? `<thead><tr><th class="l">大樓</th><th class="l">族群</th><th>權重</th><th>模擬市值</th></tr></thead><tbody>` + hs.map(h => `<tr><td data-label="大樓" class="l"><b>${esc(h.ticker)}</b></td><td data-label="族群" class="l">${esc(groupOf(h.ticker))}</td><td data-label="權重" class="num">${h.weight != null ? h.weight.toFixed(1) + '%' : '—'}</td><td data-label="模擬市值" class="num">${money0(h.value)}</td></tr>`).join('') + '</tbody>'
+      : `<thead><tr><th class="l">大樓</th><th class="l">族群</th><th class="l">方向</th><th>股數</th><th>成本</th><th>停損／停利</th><th class="l">理由</th></tr></thead><tbody>` + hs.map(h => { const t = h.t; return `<tr>
+        <td data-label="大樓" class="l"><b>${esc(t.ticker)}</b></td><td data-label="族群" class="l"><span class="sw" style="background:${gColor(groupOf(t.ticker))}"></span>${esc(groupOf(t.ticker))}</td>
+        <td data-label="方向" class="l ${t.side === 'short' ? 'down' : 'up'}">${t.side === 'short' ? '空' : '多'}</td><td data-label="股數" class="num">${t.qty}</td>
+        <td data-label="成本" class="num">${money(t.entry)}</td><td data-label="停損／停利" class="num">${t.stop ?? '—'} / ${t.target ?? '—'}</td>
+        <td data-label="理由" class="l reason" title="${esc(t.reason || '')}">${esc(String(t.reason || '').replace(/\s+/g, ' ').slice(0, 70))}${String(t.reason || '').length > 70 ? '…' : ''}</td></tr>`; }).join('') + '</tbody>';
+    if (typeof wrapCells === 'function') wrapCells('city-d-tbl');
+  }
+  function renderLegend() {
+    const gs = [...new Set((City.trades || []).map(t => groupOf(t.ticker)).concat(((STATE.mao || {}).holdings || []).map(h => groupOf(h.ticker))))];
+    $('city-legend').innerHTML = gs.map(g => `<span><i style="background:${gColor(g)}"></i>${esc(g)}</span>`).join('')
+      + '<span><i style="background:#eab308"></i>金庫＝現金</span><span><i style="background:#ef4444"></i>紅屋頂＝空單</span><span>🌳 有空地且沒大賠才長樹，🌧️ 賠超過 2% 會下雨</span>';
+  }
+
+  /* ---- 畫圖 ---- */
+  function readColors() {
+    const cs = getComputedStyle(document.documentElement);
+    colors = { bg: cs.getPropertyValue('--card-2').trim() || '#1a1a19', text: cs.getPropertyValue('--text').trim() || '#fff', line: cs.getPropertyValue('--line-2').trim() || '#444', dark: ['dark', 'ops'].includes(document.documentElement.dataset.theme) || (document.documentElement.dataset.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches) };
+  }
+  function sizeCanvases() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    CIDS.forEach(id => {
+      const cv = $('city-cv-' + id); const w = cv.clientWidth, h = cv.clientHeight; if (!w) return;
+      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+      const TW = Math.min(w * 0.84 / 4, 64), TH = TW / 2;
+      cities[id].geo = { w, h, dpr, TW, TH, ox: w / 2, oy: h - 4 * TH - 10 };
+    });
+  }
+  const tileTop = (g, gx, gy) => [g.ox + (gx - gy) * g.TW / 2, g.oy + (gx + gy) * g.TH / 2];
+  const tileC = (g, gx, gy) => { const [x, y] = tileTop(g, gx, gy); return [x, y + g.TH / 2]; };
+  function shade(hex, k) {
+    const n = parseInt(hex.slice(1), 16); let r = n >> 16, gg = (n >> 8) & 255, b = n & 255;
+    const f = v => Math.max(0, Math.min(255, Math.round(k > 0 ? v + (255 - v) * k : v * (1 + k))));
+    return `rgb(${f(r)},${f(gg)},${f(b)})`;
+  }
+  function box(ctx, g, gx, gy, h, color, k = 0.74, roof) {
+    const [cx, cy] = tileC(g, gx, gy), hw = g.TW / 2 * k, hh = g.TH / 2 * k;
+    const L = [cx - hw, cy], B = [cx, cy + hh], R = [cx + hw, cy], T = [cx, cy - hh];
+    const up = p => [p[0], p[1] - h];
+    const poly = (pts, fill) => { ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); };
+    poly([L, B, up(B), up(L)], shade(color, -0.12));
+    poly([B, R, up(R), up(B)], shade(color, -0.38));
+    poly([up(T), up(R), up(B), up(L)], roof || shade(color, 0.28));
+    return { L, B, R, T, up };
+  }
+  function windows(ctx, s, h) {
+    ctx.fillStyle = colors.dark ? 'rgba(255,236,170,.75)' : 'rgba(255,255,255,.7)';
+    for (let yy = 8; yy < h - 4; yy += 9) [0.3, 0.65].forEach(fr => {
+      const lx = s.L[0] + (s.B[0] - s.L[0]) * fr, ly = s.L[1] + (s.B[1] - s.L[1]) * fr - yy;
+      ctx.fillRect(lx - 1.5, ly - 2, 3, 3);
+      const rx = s.B[0] + (s.R[0] - s.B[0]) * fr, ry = s.B[1] + (s.R[1] - s.B[1]) * fr - yy;
+      ctx.globalAlpha = 0.6; ctx.fillRect(rx - 1.5, ry - 2, 3, 3); ctx.globalAlpha = 1;
+    });
+  }
+  function draw(id, tms) {
+    const c = cities[id], g = c.geo; if (!g) return;
+    const cv = $('city-cv-' + id), ctx = cv.getContext('2d');
+    ctx.setTransform(g.dpr, 0, 0, g.dpr, 0, 0); ctx.clearRect(0, 0, g.w, g.h);
+    const f = frames[idx], eq = f ? f.eq[id] : null, ret = eq == null ? 0 : (eq / 10000 - 1) * 100;
+    // 天空
+    const sky = ctx.createLinearGradient(0, 0, 0, g.h);
+    const good = ret >= 0;
+    sky.addColorStop(0, eq == null ? 'rgba(120,120,120,.10)' : good ? `rgba(56,189,248,${0.10 + Math.min(ret, 4) * 0.04})` : `rgba(100,100,120,${0.12 + Math.min(-ret, 5) * 0.04})`);
+    sky.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, g.w, g.h);
+    if (eq != null && ret >= 1) { ctx.fillStyle = 'rgba(250,204,21,.55)'; ctx.beginPath(); ctx.arc(g.w - 26, 22, 9 + Math.sin(tms / 600), 0, 7); ctx.fill(); }
+    // 地面
+    for (let gy = 0; gy < 4; gy++) for (let gx = 0; gx < 4; gx++) {
+      const [x, y] = tileTop(g, gx, gy);
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + g.TW / 2, y + g.TH / 2); ctx.lineTo(x, y + g.TH); ctx.lineTo(x - g.TW / 2, y + g.TH / 2); ctx.closePath();
+      ctx.fillStyle = eq == null ? (colors.dark ? 'rgba(120,120,120,.18)' : 'rgba(120,120,120,.16)') : ret > -2 ? (colors.dark ? 'rgba(52,196,139,.20)' : 'rgba(16,150,95,.16)') : (colors.dark ? 'rgba(161,120,80,.22)' : 'rgba(150,110,70,.20)');
+      ctx.fill(); ctx.strokeStyle = colors.dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)'; ctx.lineWidth = 1; ctx.stroke();
+    }
+    if (eq == null) { ctx.fillStyle = colors.text; ctx.globalAlpha = .6; ctx.font = '600 12px system-ui'; ctx.textAlign = 'center'; ctx.fillText('🚧 尚未開城', g.ox, g.oy + 2 * g.TH); ctx.globalAlpha = 1; return; }
+    // 物件依深度排序
+    const items = [];
+    c.bld.forEach((b, k) => {
+      b.h += (b.target - b.h) * 0.07; if (Math.abs(b.target - b.h) < 0.3) b.h = b.target;
+      if (b.target === 0 && b.h < 1) { c.bld.delete(k); return; }
+      items.push({ d: b.lot[0] + b.lot[1], b });
+    });
+    const used = new Set(items.map(i => i.b.lot.join())); used.add(VAULT.join());
+    if (id !== 'mao') items.push({ d: VAULT[0] + VAULT[1], vault: true });
+    if (ret > -1) LOT_ORDER.slice(4).forEach((l, n) => { if (!used.has(l.join()) && (n % 2 === 0 || ret > 0.5)) items.push({ d: l[0] + l[1], tree: l }); });
+    items.sort((a, b) => a.d - b.d);
+    items.forEach(it => {
+      if (it.tree) {
+        const [x, y] = tileC(g, it.tree[0], it.tree[1]);
+        ctx.fillStyle = '#7c5a3a'; ctx.fillRect(x - 1.5, y - 10, 3, 10);
+        ctx.fillStyle = ret > 0 ? '#22c55e' : '#65a30d'; ctx.beginPath(); ctx.arc(x, y - 14, 7, 0, 7); ctx.fill();
+        return;
+      }
+      if (it.vault) {
+        const vh = 6 + 34 * Math.min(1, (c.cash || 0) / 10000);
+        const s = box(ctx, g, VAULT[0], VAULT[1], vh, '#d4a017', 0.6);
+        ctx.fillStyle = '#7a5a00'; ctx.font = '800 10px system-ui'; ctx.textAlign = 'center'; ctx.fillText('$', s.up(s.T)[0], s.up(s.T)[1] + 6);
+        return;
+      }
+      const b = it.b, s = box(ctx, g, b.lot[0], b.lot[1], b.h, b.color, 0.74, b.side === 'short' ? '#ef4444' : null);
+      if (b.h > 14) windows(ctx, s, b.h);
+      if (b.h < b.target - 1) { // 吊車
+        const top = s.up(s.R); ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2; ctx.beginPath();
+        ctx.moveTo(top[0] + 6, s.R[1]); ctx.lineTo(top[0] + 6, top[1] - 14); ctx.lineTo(top[0] - 18, top[1] - 14); ctx.stroke();
+        ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(top[0] - 12, top[1] - 14); ctx.lineTo(top[0] - 12, top[1] - 4 + Math.sin(tms / 200) * 2); ctx.stroke();
+      }
+      const lt = s.up(s.T);
+      ctx.font = '800 10px system-ui'; ctx.textAlign = 'center';
+      ctx.fillStyle = colors.dark ? 'rgba(0,0,0,.55)' : 'rgba(255,255,255,.8)';
+      const tw = ctx.measureText(b.tk).width + 8; ctx.fillRect(lt[0] - tw / 2, lt[1] - 17, tw, 13);
+      ctx.fillStyle = colors.text; ctx.fillText((b.side === 'short' ? '▼' : '') + b.tk, lt[0], lt[1] - 7);
+    });
+    // 下雨
+    if (ret < -2) {
+      ctx.fillStyle = colors.dark ? 'rgba(148,163,184,.45)' : 'rgba(100,116,139,.35)';
+      [[g.w * 0.35, 26], [g.w * 0.62, 20]].forEach(([x, y]) => { ctx.beginPath(); ctx.ellipse(x, y, 26, 9, 0, 0, 7); ctx.fill(); });
+      ctx.strokeStyle = 'rgba(96,165,250,.6)'; ctx.lineWidth = 1;
+      for (let k = 0; k < 14; k++) { const x = g.w * 0.25 + (k * 37) % (g.w * 0.5), y = 34 + ((tms / 8 + k * 23) % 60); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 2, y + 6); ctx.stroke(); }
+    }
+    // 粒子
+    c.parts = c.parts.filter(p => p.life > 0);
+    c.parts.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.vy += p.g; p.life -= p.decay; if (p.smoke) p.r += 0.08;
+      ctx.globalAlpha = Math.max(0, p.life) * (p.smoke ? 0.5 : 1); ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+  }
+  function loop(tms) {
+    raf = 0;
+    if (typeof tab === 'undefined' || tab !== 'city') return;
+    if (playing && frames.length) {
+      const dt = lastT ? Math.min(200, tms - lastT) : 0;
+      acc += dt / 1000 * (+$('city-speed').value || 3);
+      if (acc >= 1) { const step = Math.floor(acc); acc -= step; jump(idx + step, true); if (idx >= frames.length - 1) { playing = false; updPlay(); } }
+    }
+    lastT = tms;
+    CIDS.forEach(id => draw(id, tms));
+    raf = requestAnimationFrame(loop);
+  }
+
+  return {
+    trades: [],
+    refresh() {
+      if (!$('city-grid')) return;
+      const atEnd = !frames.length || idx >= frames.length - 1;
+      buildData(); if (!built) buildDom();
+      $('city-slider').max = Math.max(0, frames.length - 1);
+      renderLegend();
+      if (sel == null && frames.length) { const r = rankAt(frames.length - 1); sel = r[0] || null; if (sel) $('city-' + sel).setAttribute('aria-pressed', 'true'); }
+      if (!playing) jump(atEnd ? frames.length - 1 : idx, false);
+    },
+    show() {
+      if (!built) this.refresh();
+      readColors(); sizeCanvases();
+      if (!raf) { lastT = 0; raf = requestAnimationFrame(loop); }
+    }
+  };
+})();
+
 /* ---------- 分頁 ---------- */
-const TABS = ['overview', 'positions', 'analytics', 'pools', 'scan', 'mao', 'trades', 'feed'];
+const TABS = ['overview', 'city', 'positions', 'analytics', 'pools', 'scan', 'mao', 'trades', 'feed'];
 let tab = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : (store.get('arena-tab') || 'overview');
 function setTab(t) {
   tab = TABS.includes(t) ? t : 'overview';
@@ -1082,7 +1562,7 @@ function setTab(t) {
 }
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => setTab(b.dataset.tab));
 window.addEventListener('hashchange', () => setTab(location.hash.slice(1)));
-function renderCharts() { if (tab === 'overview') renderEquity(); if (tab === 'analytics') renderDrawdown(); if (tab === 'feed') renderEvents(); if (tab === 'mao') renderMaoChart(); }
+function renderCharts() { if (tab === 'overview') renderEquity(); if (tab === 'analytics') renderDrawdown(); if (tab === 'feed') renderEvents(); if (tab === 'mao') renderMaoChart(); if (tab === 'city') City.show(); }
 let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(renderCharts, 150); });
 
 function wrapCells(id) {
@@ -1091,7 +1571,7 @@ function wrapCells(id) {
 
 function renderAll() {
   renderHeader(); renderKPIs(); renderBoard(); renderMoves(); renderPositions();
-  renderMetrics(); renderPools(); renderScan(); renderMao(); renderTrades(); renderNotes(); renderEvents(); renderCharts();
+  renderMetrics(); renderPools(); renderScan(); renderMao(); renderTrades(); renderNotes(); renderEvents(); City.refresh(); renderCharts();
   ['metrics', 'strategy', 'trades', 'heat', 'mao-hold', 'mao-lb', 'mao-adv'].forEach(wrapCells);
 }
 

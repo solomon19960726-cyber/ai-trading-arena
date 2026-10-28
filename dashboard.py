@@ -822,6 +822,8 @@ def build_state(fast=True):
         'pools': stock_pools(state, ext, feed),
         'mao': mao_summary(quotes),
         'scan': load_scan(),
+        'themes': load_themes(),
+        'etf_group': ETF_GROUP,
         'drawdown_curve': dd_series[-400:]
     }
 
