@@ -567,7 +567,7 @@
   <section data-panel="city" hidden>
     <div class="card">
       <h2 data-en="ARENA CITY">城市經營：六座城的興衰回放</h2>
-      <p class="desc">每位 AI（加上茂的 FT 對照組）各經營一座城：持股是大樓（高度＝部位成本、顏色＝族群），金庫是現金，淨值越高城越繁榮。按播放從開賽回放到現在，點一座城看它當下的持股和理由。</p>
+      <p class="desc">每位 AI（加上茂的 FT 對照組）各經營一座城，畫面會依當時的美東時間變白天、黃昏、晚上；買進時運鈔車把錢從金庫載去蓋樓，平倉再載回來。持股是大樓（高度＝部位成本、顏色＝族群），金庫是現金，淨值越高城越繁榮。按播放從開賽回放到現在，點一座城看它當下的持股和理由。</p>
       <div class="city-bar">
         <button class="btn city-play" id="city-play">▶ 播放</button>
         <select class="btn" id="city-speed" aria-label="播放速度">
@@ -1313,6 +1313,8 @@ const City = (() => {
     const t = e.t || {};
     const b = t.id ? c.bld.get(e.agent + '|' + t.id) : null;
     const pos = b ? b.lot : [1.5, 1.5];
+    if (e.kind === 'buy' && b) (c.trucks = c.trucks || []).push({ from: VAULT, to: b.lot, t: 0, coin: false });
+    if ((e.kind === 'win' || e.kind === 'loss') && b && e.agent !== 'mao') (c.trucks = c.trucks || []).push({ from: b.lot, to: VAULT, t: 0, coin: e.kind === 'win' });
     if (e.kind === 'buy') { popText(e.agent, `🏗️ ${t.side === 'short' ? '放空' : '買進'} ${t.ticker}`, 'var(--accent)'); sfx('buy'); }
     if (e.kind === 'win') { burst(e.agent, pos, b ? b.h : 40, true); popText(e.agent, `🎆 ${t.ticker} ${money0(t.pnl, true)}`, 'var(--up)'); sfx('win'); }
     if (e.kind === 'loss') { burst(e.agent, pos, b ? b.h : 30, false); popText(e.agent, `💥 ${t.ticker} ${money0(t.pnl, true)}`, 'var(--down)'); sfx('loss'); }
@@ -1414,12 +1416,19 @@ const City = (() => {
     CIDS.forEach(id => {
       const cv = $('city-cv-' + id); const w = cv.clientWidth, h = cv.clientHeight; if (!w) return;
       cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
-      const TW = Math.min(w * 0.84 / 4, 64), TH = TW / 2;
-      cities[id].geo = { w, h, dpr, TW, TH, ox: w / 2, oy: h - 4 * TH - 10 };
+      const TW = Math.min(w * 0.72 / 4, 58), TH = TW / 2;
+      cities[id].geo = { w, h, dpr, TW, TH, ox: w / 2, oy: h - 4 * TH - 24 };
     });
   }
   const tileTop = (g, gx, gy) => [g.ox + (gx - gy) * g.TW / 2, g.oy + (gx + gy) * g.TH / 2];
   const tileC = (g, gx, gy) => { const [x, y] = tileTop(g, gx, gy); return [x, y + g.TH / 2]; };
+  // 格子座標（可小數）→ 畫面座標；道路在 -0.45 與 4.45 那一圈
+  const gp = (g, gx, gy) => [g.ox + (gx - gy) * g.TW / 2, g.oy + (gx + gy) * g.TH / 2];
+  const ROAD = [[-0.45, -0.45], [4.45, -0.45], [4.45, 4.45], [-0.45, 4.45]];
+  function ringPt(u) { // u ∈ [0,1) 沿著道路一圈
+    u = ((u % 1) + 1) % 1; const s = u * 4, k = Math.floor(s), f = s - k, a = ROAD[k], b = ROAD[(k + 1) % 4];
+    return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, k];
+  }
   function shade(hex, k) {
     const n = parseInt(hex.slice(1), 16); let r = n >> 16, gg = (n >> 8) & 255, b = n & 255;
     const f = v => Math.max(0, Math.min(255, Math.round(k > 0 ? v + (255 - v) * k : v * (1 + k))));
@@ -1435,78 +1444,168 @@ const City = (() => {
     poly([up(T), up(R), up(B), up(L)], roof || shade(color, 0.28));
     return { L, B, R, T, up };
   }
-  function windows(ctx, s, h) {
-    ctx.fillStyle = colors.dark ? 'rgba(255,236,170,.75)' : 'rgba(255,255,255,.7)';
+  const hash = n => { n = Math.sin(n * 127.1) * 43758.5453; return n - Math.floor(n); };
+  function windows(ctx, s, h, night, seed, tms) {
+    let w = 0;
     for (let yy = 8; yy < h - 4; yy += 9) [0.3, 0.65].forEach(fr => {
+      w++;
+      const lit = night > 0.35 ? hash(seed * 31 + w + Math.floor(tms / 2500 + hash(seed + w) * 7) * 0.13) > 0.35 : true;
+      ctx.fillStyle = night > 0.35 ? (lit ? 'rgba(255,214,120,.95)' : 'rgba(30,40,60,.6)') : (colors.dark ? 'rgba(200,230,255,.55)' : 'rgba(255,255,255,.7)');
       const lx = s.L[0] + (s.B[0] - s.L[0]) * fr, ly = s.L[1] + (s.B[1] - s.L[1]) * fr - yy;
       ctx.fillRect(lx - 1.5, ly - 2, 3, 3);
       const rx = s.B[0] + (s.R[0] - s.B[0]) * fr, ry = s.B[1] + (s.R[1] - s.B[1]) * fr - yy;
-      ctx.globalAlpha = 0.6; ctx.fillRect(rx - 1.5, ry - 2, 3, 3); ctx.globalAlpha = 1;
+      ctx.globalAlpha = 0.7; ctx.fillRect(rx - 1.5, ry - 2, 3, 3); ctx.globalAlpha = 1;
     });
+  }
+  // 美東時間 → 夜晚程度 0~1、太陽位置
+  function dayInfo(ts) {
+    const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(new Date(ts));
+    const h = (+p.find(x => x.type === 'hour').value % 24) + (+p.find(x => x.type === 'minute').value) / 60;
+    const night = h < 5 || h >= 20.5 ? 1 : h < 7 ? 1 - (h - 5) / 2 : h >= 18 ? (h - 18) / 2.5 : 0;
+    const dusk = h >= 16.5 && h < 20.5 ? 1 - Math.abs(h - 18.5) / 2 : h >= 5.5 && h < 8 ? 1 - Math.abs(h - 6.5) / 1.5 : 0;
+    return { h, night: Math.max(0, Math.min(1, night)), dusk: Math.max(0, dusk) };
+  }
+  function drawCar(ctx, g, u, color, night, truck) {
+    const [x, y, side] = ringPt(u), [sx, sy] = gp(g, x, y);
+    const dir = [[1, 0.5], [-1, 0.5], [-1, -0.5], [1, -0.5]][side];
+    const L = truck ? 10 : 8, W = 4;
+    ctx.save(); ctx.translate(sx, sy);
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0, 2, L * 0.8, 2.5, 0, 0, 7); ctx.fill();
+    ctx.rotate(Math.atan2(dir[1], dir[0]));
+    ctx.fillStyle = color; ctx.fillRect(-L / 2, -W - 3, L, W + 2);
+    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(L / 2 - 3, -W - 2, 2, W);
+    if (night > 0.4) { ctx.fillStyle = 'rgba(255,240,180,.85)'; ctx.beginPath(); ctx.moveTo(L / 2, -W); ctx.lineTo(L / 2 + 12, -W - 5); ctx.lineTo(L / 2 + 12, -W + 4); ctx.fill(); }
+    ctx.restore();
   }
   function draw(id, tms) {
     const c = cities[id], g = c.geo; if (!g) return;
     const cv = $('city-cv-' + id), ctx = cv.getContext('2d');
     ctx.setTransform(g.dpr, 0, 0, g.dpr, 0, 0); ctx.clearRect(0, 0, g.w, g.h);
     const f = frames[idx], eq = f ? f.eq[id] : null, ret = eq == null ? 0 : (eq / 10000 - 1) * 100;
-    // 天空
-    const sky = ctx.createLinearGradient(0, 0, 0, g.h);
-    const good = ret >= 0;
-    sky.addColorStop(0, eq == null ? 'rgba(120,120,120,.10)' : good ? `rgba(56,189,248,${0.10 + Math.min(ret, 4) * 0.04})` : `rgba(100,100,120,${0.12 + Math.min(-ret, 5) * 0.04})`);
-    sky.addColorStop(1, 'rgba(0,0,0,0)');
+    const di = f ? dayInfo(f.ts) : { h: 12, night: 0, dusk: 0 };
+    c.night = c.night == null ? di.night : c.night + (di.night - c.night) * 0.04;
+    c.dusk = c.dusk == null ? di.dusk : c.dusk + (di.dusk - c.dusk) * 0.04;
+    const night = c.night, open = eq != null;
+    // 天空：白天藍、黃昏橘、晚上深藍＋星星
+    const sky = ctx.createLinearGradient(0, 0, 0, g.h * 0.75);
+    const dayA = (1 - night) * (ret >= 0 ? 0.55 : 0.32);
+    sky.addColorStop(0, `rgba(${Math.round(56 + 140 * c.dusk)},${Math.round(150 - 40 * c.dusk + (ret < 0 ? -40 : 0))},${Math.round(230 - 150 * c.dusk)},${dayA + c.dusk * 0.25})`);
+    sky.addColorStop(1, `rgba(140,200,255,${(1 - night) * 0.12})`);
     ctx.fillStyle = sky; ctx.fillRect(0, 0, g.w, g.h);
-    if (eq != null && ret >= 1) { ctx.fillStyle = 'rgba(250,204,21,.55)'; ctx.beginPath(); ctx.arc(g.w - 26, 22, 9 + Math.sin(tms / 600), 0, 7); ctx.fill(); }
+    if (night > 0.02) {
+      const ns = ctx.createLinearGradient(0, 0, 0, g.h); ns.addColorStop(0, `rgba(4,8,28,${night * 0.9})`); ns.addColorStop(1, `rgba(4,8,28,${night * 0.6})`);
+      ctx.fillStyle = ns; ctx.fillRect(0, 0, g.w, g.h);
+      for (let k = 0; k < 22; k++) { ctx.globalAlpha = night * (0.4 + 0.6 * Math.abs(Math.sin(tms / 900 + k))); ctx.fillStyle = '#fff'; ctx.fillRect(hash(k + 3) * g.w, hash(k + 9) * g.h * 0.35, 1.3, 1.3); }
+      ctx.globalAlpha = 1;
+    }
+    // 太陽／月亮沿弧線移動
+    const arc = ((di.h - 6) / 14), sunX = g.w * (0.1 + 0.8 * Math.min(1, Math.max(0, arc))), sunY = 40 - Math.sin(Math.PI * Math.min(1, Math.max(0, arc))) * 26;
+    if (night < 0.6 && open) { ctx.fillStyle = `rgba(250,${Math.round(204 - 80 * c.dusk)},21,${0.75 * (1 - night)})`; ctx.beginPath(); ctx.arc(sunX, sunY, 9 + Math.sin(tms / 600), 0, 7); ctx.fill(); }
+    if (night > 0.4) { ctx.fillStyle = `rgba(230,235,255,${night * 0.9})`; ctx.beginPath(); ctx.arc(g.w - 30, 26, 8, 0, 7); ctx.fill(); ctx.fillStyle = `rgba(8,14,40,${night})`; ctx.beginPath(); ctx.arc(g.w - 26, 23, 7, 0, 7); ctx.fill(); }
+    // 飄過的雲
+    for (let k = 0; k < 3; k++) {
+      const sp = 0.006 + k * 0.004, x = ((tms * sp + k * 140) % (g.w + 120)) - 60, y = 18 + k * 13;
+      ctx.fillStyle = ret < -2 ? `rgba(120,130,150,${0.45})` : `rgba(255,255,255,${0.16 + (1 - night) * 0.2})`;
+      ctx.beginPath(); ctx.ellipse(x, y, 20 + k * 4, 6, 0, 0, 7); ctx.ellipse(x + 12, y - 4, 12, 6, 0, 0, 7); ctx.fill();
+    }
+    // 道路
+    ctx.beginPath(); ROAD.forEach((p, i) => { const [x, y] = gp(g, p[0], p[1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.closePath();
+    ctx.strokeStyle = colors.dark ? 'rgba(90,100,120,.55)' : 'rgba(110,110,120,.45)'; ctx.lineWidth = g.TH * 0.55; ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.setLineDash([3, 4]); ctx.lineDashOffset = -tms / 60; ctx.strokeStyle = 'rgba(250,204,21,.45)'; ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
     // 地面
     for (let gy = 0; gy < 4; gy++) for (let gx = 0; gx < 4; gx++) {
       const [x, y] = tileTop(g, gx, gy);
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + g.TW / 2, y + g.TH / 2); ctx.lineTo(x, y + g.TH); ctx.lineTo(x - g.TW / 2, y + g.TH / 2); ctx.closePath();
-      ctx.fillStyle = eq == null ? (colors.dark ? 'rgba(120,120,120,.18)' : 'rgba(120,120,120,.16)') : ret > -2 ? (colors.dark ? 'rgba(52,196,139,.20)' : 'rgba(16,150,95,.16)') : (colors.dark ? 'rgba(161,120,80,.22)' : 'rgba(150,110,70,.20)');
+      ctx.fillStyle = !open ? (colors.dark ? 'rgba(120,120,120,.18)' : 'rgba(120,120,120,.16)') : ret > -2 ? `rgba(${night > .5 ? '30,110,80' : '74,200,120'},${0.22 + (1 - night) * 0.18})` : (colors.dark ? 'rgba(161,120,80,.24)' : 'rgba(150,110,70,.22)');
       ctx.fill(); ctx.strokeStyle = colors.dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)'; ctx.lineWidth = 1; ctx.stroke();
     }
-    if (eq == null) { ctx.fillStyle = colors.text; ctx.globalAlpha = .6; ctx.font = '600 12px system-ui'; ctx.textAlign = 'center'; ctx.fillText('🚧 尚未開城', g.ox, g.oy + 2 * g.TH); ctx.globalAlpha = 1; return; }
+    if (!open) { ctx.fillStyle = colors.text; ctx.globalAlpha = .6; ctx.font = '600 12px system-ui'; ctx.textAlign = 'center'; ctx.fillText('🚧 尚未開城', g.ox, g.oy + 2 * g.TH); ctx.globalAlpha = 1; return; }
+    // 車流：城越繁榮、持股越多，車越多；跑速跟著播放速度
+    const nb = [...c.bld.values()].filter(b => b.target > 0).length;
+    const nCars = Math.max(1, Math.min(8, 2 + nb + (ret > 0 ? 2 : 0) + (ret < -2 ? -2 : 0)));
+    const speed = playing ? 1.6 : 1;
+    if (!c.cars) c.cars = Array.from({ length: 8 }, (_, k) => ({ u: hash(k + id.length) , v: (0.00003 + hash(k * 7) * 0.00004) * (k % 2 ? 1 : -1), col: ['#ef4444', '#f8fafc', '#3b82f6', '#facc15', '#22c55e', '#a855f7', '#f97316', '#94a3b8'][k] }));
+    const dtc = c.lastTms ? Math.min(60, tms - c.lastTms) : 16; c.lastTms = tms;
+    c.cars.slice(0, nCars).forEach(car => { car.u += car.v * dtc * speed; drawCar(ctx, g, car.u, car.col, night); });
+    // 運鈔車（買進：金庫→大樓；平倉：大樓→金庫）
+    c.trucks = (c.trucks || []).filter(t => t.t < 1);
     // 物件依深度排序
     const items = [];
     c.bld.forEach((b, k) => {
       b.h += (b.target - b.h) * 0.07; if (Math.abs(b.target - b.h) < 0.3) b.h = b.target;
       if (b.target === 0 && b.h < 1) { c.bld.delete(k); return; }
-      items.push({ d: b.lot[0] + b.lot[1], b });
+      items.push({ d: b.lot[0] + b.lot[1], b, k });
     });
     const used = new Set(items.map(i => i.b.lot.join())); used.add(VAULT.join());
     if (id !== 'mao') items.push({ d: VAULT[0] + VAULT[1], vault: true });
-    if (ret > -1) LOT_ORDER.slice(4).forEach((l, n) => { if (!used.has(l.join()) && (n % 2 === 0 || ret > 0.5)) items.push({ d: l[0] + l[1], tree: l }); });
+    if (ret > -1) LOT_ORDER.slice(4).forEach((l, n) => { if (!used.has(l.join()) && (n % 2 === 0 || ret > 0.5)) items.push({ d: l[0] + l[1], tree: l, n }); });
+    // 行人：在格子之間的小路上走
+    const nPeople = Math.max(0, Math.min(10, Math.round(3 + nb * 1.5 + ret)));
+    for (let k = 0; k < nPeople; k++) {
+      const lane = 1 + (k % 3), along = ((tms * (0.00006 + hash(k) * 0.00005) * (k % 2 ? 1 : -1) + hash(k * 3)) % 1 + 1) % 1 * 4;
+      const [x, y] = k % 2 ? [lane, along] : [along, lane];
+      items.push({ d: x + y + 0.01, person: [x, y], k });
+    }
+    c.trucks.forEach(t => items.push({ d: 99, truck: t }));
     items.sort((a, b) => a.d - b.d);
+    const tallest = items.filter(i => i.b).sort((a, b) => b.b.h - a.b.h)[0];
     items.forEach(it => {
+      if (it.person) {
+        const [x, y] = gp(g, it.person[0], it.person[1]), bob = Math.abs(Math.sin(tms / 140 + it.k)) * 1.5;
+        ctx.fillStyle = ['#f87171', '#60a5fa', '#fbbf24', '#34d399', '#e879f9'][it.k % 5]; ctx.fillRect(x - 1.2, y - 6 - bob, 2.4, 4);
+        ctx.fillStyle = '#fde68a'; ctx.beginPath(); ctx.arc(x, y - 7.5 - bob, 1.4, 0, 7); ctx.fill();
+        return;
+      }
       if (it.tree) {
-        const [x, y] = tileC(g, it.tree[0], it.tree[1]);
+        const [x, y] = tileC(g, it.tree[0], it.tree[1]), sway = Math.sin(tms / 700 + it.n) * 1.2;
         ctx.fillStyle = '#7c5a3a'; ctx.fillRect(x - 1.5, y - 10, 3, 10);
-        ctx.fillStyle = ret > 0 ? '#22c55e' : '#65a30d'; ctx.beginPath(); ctx.arc(x, y - 14, 7, 0, 7); ctx.fill();
+        ctx.fillStyle = ret > 0 ? '#22c55e' : '#65a30d'; ctx.beginPath(); ctx.arc(x + sway, y - 14, 7, 0, 7); ctx.fill();
+        if (night > 0.5 && it.n % 3 === 0) { ctx.fillStyle = 'rgba(255,220,130,.9)'; ctx.fillRect(x + 8, y - 14, 1.5, 14); ctx.beginPath(); ctx.arc(x + 8.7, y - 15, 2.4, 0, 7); ctx.fill(); }
+        return;
+      }
+      if (it.truck) {
+        const t = it.truck; t.t += 0.012 * (playing ? Math.min(3, +$('city-speed').value / 3 + 0.6) : 1);
+        const e = t.t < 0.5 ? 2 * t.t * t.t : 1 - Math.pow(-2 * t.t + 2, 2) / 2;
+        const [ax, ay] = tileC(g, t.from[0], t.from[1]), [bx, by] = tileC(g, t.to[0], t.to[1]);
+        const x = ax + (bx - ax) * e, y = ay + (by - ay) * e - Math.sin(Math.PI * e) * 10;
+        ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(x, ay + (by - ay) * e + 2, 7, 2.5, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = t.coin ? '#d4a017' : '#334155'; ctx.fillRect(x - 7, y - 9, 14, 7);
+        ctx.fillStyle = '#facc15'; ctx.font = '800 8px system-ui'; ctx.textAlign = 'center'; ctx.fillText('$', x, y - 3);
+        if (t.coin && Math.random() < 0.3) c.parts.push({ x, y: y - 10, vx: (Math.random() - .5) * .6, vy: -0.8, life: 1, decay: 0.04, g: 0.05, r: 1.6, color: '#facc15' });
         return;
       }
       if (it.vault) {
         const vh = 6 + 34 * Math.min(1, (c.cash || 0) / 10000);
         const s = box(ctx, g, VAULT[0], VAULT[1], vh, '#d4a017', 0.6);
         ctx.fillStyle = '#7a5a00'; ctx.font = '800 10px system-ui'; ctx.textAlign = 'center'; ctx.fillText('$', s.up(s.T)[0], s.up(s.T)[1] + 6);
+        if (hash(Math.floor(tms / 400) + id.length) > 0.8) { const p = s.up(s.R); ctx.fillStyle = '#fff7cc'; ctx.fillRect(p[0] - 3, p[1] + 2, 2, 2); }
         return;
       }
       const b = it.b, s = box(ctx, g, b.lot[0], b.lot[1], b.h, b.color, 0.74, b.side === 'short' ? '#ef4444' : null);
-      if (b.h > 14) windows(ctx, s, b.h);
+      if (b.h > 14) windows(ctx, s, b.h, night, b.lot[0] * 5 + b.lot[1], tms);
+      const lt = s.up(s.T);
+      if (b.h > 40 && b.h >= b.target - 1) { // 屋頂天線，晚上閃紅燈
+        ctx.strokeStyle = colors.dark ? '#94a3b8' : '#64748b'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(lt[0], lt[1] + 3); ctx.lineTo(lt[0], lt[1] - 7); ctx.stroke();
+        if (Math.sin(tms / 300 + b.lot[0]) > 0.2) { ctx.fillStyle = night > 0.3 ? '#ff3b3b' : 'rgba(255,59,59,.6)'; ctx.beginPath(); ctx.arc(lt[0], lt[1] - 8, 1.8, 0, 7); ctx.fill(); }
+      }
+      if (it === tallest && rankAt(idx)[0] === id) { // 第一名的旗子
+        const fx = lt[0] + 4, fy = lt[1] - 4; ctx.strokeStyle = '#e5e7eb'; ctx.beginPath(); ctx.moveTo(fx, fy + 6); ctx.lineTo(fx, fy - 12); ctx.stroke();
+        ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.moveTo(fx, fy - 12); ctx.quadraticCurveTo(fx + 6, fy - 12 + Math.sin(tms / 180) * 2, fx + 11, fy - 9); ctx.lineTo(fx, fy - 6); ctx.fill();
+      }
       if (b.h < b.target - 1) { // 吊車
         const top = s.up(s.R); ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2; ctx.beginPath();
         ctx.moveTo(top[0] + 6, s.R[1]); ctx.lineTo(top[0] + 6, top[1] - 14); ctx.lineTo(top[0] - 18, top[1] - 14); ctx.stroke();
         ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(top[0] - 12, top[1] - 14); ctx.lineTo(top[0] - 12, top[1] - 4 + Math.sin(tms / 200) * 2); ctx.stroke();
       }
-      const lt = s.up(s.T);
       ctx.font = '800 10px system-ui'; ctx.textAlign = 'center';
-      ctx.fillStyle = colors.dark ? 'rgba(0,0,0,.55)' : 'rgba(255,255,255,.8)';
-      const tw = ctx.measureText(b.tk).width + 8; ctx.fillRect(lt[0] - tw / 2, lt[1] - 17, tw, 13);
-      ctx.fillStyle = colors.text; ctx.fillText((b.side === 'short' ? '▼' : '') + b.tk, lt[0], lt[1] - 7);
+      ctx.fillStyle = colors.dark || night > 0.5 ? 'rgba(0,0,0,.55)' : 'rgba(255,255,255,.8)';
+      const tw = ctx.measureText(b.tk).width + 8; ctx.fillRect(lt[0] - tw / 2, lt[1] - 27, tw, 13);
+      ctx.fillStyle = colors.dark || night > 0.5 ? '#f1f5f9' : '#0f172a'; ctx.fillText((b.side === 'short' ? '▼' : '') + b.tk, lt[0], lt[1] - 17);
     });
     // 下雨
     if (ret < -2) {
-      ctx.fillStyle = colors.dark ? 'rgba(148,163,184,.45)' : 'rgba(100,116,139,.35)';
-      [[g.w * 0.35, 26], [g.w * 0.62, 20]].forEach(([x, y]) => { ctx.beginPath(); ctx.ellipse(x, y, 26, 9, 0, 0, 7); ctx.fill(); });
       ctx.strokeStyle = 'rgba(96,165,250,.6)'; ctx.lineWidth = 1;
-      for (let k = 0; k < 14; k++) { const x = g.w * 0.25 + (k * 37) % (g.w * 0.5), y = 34 + ((tms / 8 + k * 23) % 60); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 2, y + 6); ctx.stroke(); }
+      for (let k = 0; k < 18; k++) { const x = (k * 37 + tms / 30) % g.w, y = 30 + ((tms / 6 + k * 23) % (g.h - 50)); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 2, y + 6); ctx.stroke(); }
     }
     // 粒子
     c.parts = c.parts.filter(p => p.life > 0);
@@ -1545,6 +1644,7 @@ const City = (() => {
       if (!built) this.refresh();
       readColors(); sizeCanvases();
       if (!raf) { lastT = 0; raf = requestAnimationFrame(loop); }
+      if (!this.auto && frames.length > 1) { this.auto = true; jump(0, false); playing = true; acc = 0; updPlay(); }
     }
   };
 })();
