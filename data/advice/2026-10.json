@@ -31,9 +31,13 @@
   "rr": 1.69,
   "reason": "從 243 回檔約 10%，量縮，仍站在 100 日線 214.5 上方；停損設在 20 日低點 212.9 之下",
   "scored": true,
-  "status": "open",
+  "status": "superseded",
   "source": "paper.py",
-  "last_check": "2026-10-29T08:45:32-04:00"
+  "last_check": "2026-10-29T08:45:32-04:00",
+  "exit": 214.3,
+  "exit_time": "2026-10-29T08:58:41-04:00",
+  "r": -0.38,
+  "ret": -1.489
  },
  {
   "id": "claude-SPCX-2026-10-19T17:42:12-04:00",
@@ -47,9 +51,13 @@
   "rr": 1.94,
   "reason": "回測 50 日線 148.4 有撐，但本週盤後公布 Q3 財報，波動風險大；停損設在 20 日低點 140.7 之下",
   "scored": true,
-  "status": "open",
+  "status": "superseded",
   "source": "paper.py",
-  "last_check": "2026-10-29T08:45:32-04:00"
+  "last_check": "2026-10-29T08:45:32-04:00",
+  "exit": 143.0,
+  "exit_time": "2026-10-29T08:58:41-04:00",
+  "r": -0.6,
+  "ret": -3.949
  },
  {
   "id": "muse-AVGO-2026-10-19T17:51:06-04:00",
@@ -185,7 +193,7 @@
   "scored": true,
   "status": "open",
   "source": "discord",
-  "last_check": "2026-10-29T08:45:32-04:00"
+  "last_check": "2026-10-29T09:00:42-04:00"
  },
  {
   "id": "muse-SPCX-2026-10-20T08:51:40-04:00",
@@ -201,7 +209,7 @@
   "scored": true,
   "status": "open",
   "source": "discord",
-  "last_check": "2026-10-29T08:45:32-04:00"
+  "last_check": "2026-10-29T09:00:42-04:00"
  },
  {
   "id": "muse-NVDA-2026-10-20T08:51:40-04:00",
@@ -217,7 +225,7 @@
   "scored": true,
   "status": "open",
   "source": "discord",
-  "last_check": "2026-10-29T08:45:32-04:00"
+  "last_check": "2026-10-29T09:00:42-04:00"
  },
  {
   "id": "codex-AVGO-2026-10-20T09:04:30-04:00",
@@ -793,7 +801,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-29T08:45:32-04:00"
+  "last_check": "2026-10-29T09:00:42-04:00"
  },
  {
   "id": "codex-NVDA-2026-10-23T08:56:38-04:00",
@@ -809,6 +817,54 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-29T08:45:32-04:00"
+  "last_check": "2026-10-29T09:00:42-04:00"
+ },
+ {
+  "id": "claude-AVGO-2026-10-29T08:58:41-04:00",
+  "agent": "claude",
+  "ticker": "AVGO",
+  "time": "2026-10-29T08:58:41-04:00",
+  "price": 342.48,
+  "action": "續抱",
+  "stop": 330.0,
+  "target": 372.0,
+  "rr": 2.37,
+  "reason": "自6個月低點320附近連兩日強彈，但盤前回吐至342、仍在20日均347與50日均354之下；跌破330代表反彈失敗",
+  "scored": true,
+  "status": "open",
+  "source": "paper.py",
+  "last_check": "2026-10-29T09:00:42-04:00"
+ },
+ {
+  "id": "claude-NVDA-2026-10-29T08:58:41-04:00",
+  "agent": "claude",
+  "ticker": "NVDA",
+  "time": "2026-10-29T08:58:41-04:00",
+  "price": 214.3,
+  "action": "續抱",
+  "stop": 207.0,
+  "target": 228.0,
+  "rr": 1.88,
+  "reason": "在20日低點210上方橫盤築底，但仍低於20/50日均線（約223/222）；守住210區續抱，跌破207出場",
+  "scored": true,
+  "status": "open",
+  "source": "paper.py",
+  "last_check": "2026-10-29T09:00:42-04:00"
+ },
+ {
+  "id": "claude-SPCX-2026-10-29T08:58:41-04:00",
+  "agent": "claude",
+  "ticker": "SPCX",
+  "time": "2026-10-29T08:58:41-04:00",
+  "price": 143.0,
+  "action": "減碼",
+  "stop": 138.0,
+  "target": 156.0,
+  "rr": 2.6,
+  "reason": "高點持續下移、跌回50日均149與20日均155之下，盤前143逼近20日低點140.7，已低於成本151.4；建議先減一半，剩餘以138停損",
+  "scored": true,
+  "status": "open",
+  "source": "paper.py",
+  "last_check": "2026-10-29T09:00:42-04:00"
  }
 ]
