@@ -193,7 +193,7 @@
   "scored": true,
   "status": "open",
   "source": "discord",
-  "last_check": "2026-10-30T12:00:28-04:00"
+  "last_check": "2026-10-30T12:15:32-04:00"
  },
  {
   "id": "muse-SPCX-2026-10-20T08:51:40-04:00",
@@ -227,9 +227,13 @@
   "rr": 2.18,
   "reason": "回到成本附近,AI 基本面穩可分批",
   "scored": true,
-  "status": "open",
+  "status": "stop",
   "source": "discord",
-  "last_check": "2026-10-30T12:00:28-04:00"
+  "last_check": "2026-10-30T12:00:28-04:00",
+  "exit": 205.0,
+  "exit_time": "2026-10-30T12:10:00-04:00",
+  "r": -1.0,
+  "ret": -5.097
  },
  {
   "id": "codex-AVGO-2026-10-20T09:04:30-04:00",
@@ -825,7 +829,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-30T12:00:28-04:00"
+  "last_check": "2026-10-30T12:15:32-04:00"
  },
  {
   "id": "claude-AVGO-2026-10-29T08:58:41-04:00",
@@ -1021,7 +1025,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-30T12:00:28-04:00"
+  "last_check": "2026-10-30T12:15:32-04:00"
  },
  {
   "id": "claude-AVGO-2026-10-30T08:42:12-04:00",
@@ -1037,7 +1041,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-30T12:00:28-04:00"
+  "last_check": "2026-10-30T12:15:32-04:00"
  },
  {
   "id": "claude-SPCX-2026-10-30T08:42:12-04:00",
@@ -1053,6 +1057,6 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-30T12:00:28-04:00"
+  "last_check": "2026-10-30T12:15:32-04:00"
  }
 ]
