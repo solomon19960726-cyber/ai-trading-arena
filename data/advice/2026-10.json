@@ -191,9 +191,13 @@
   "rr": 1.95,
   "reason": "權重 44% 太高且五日線下行,先降部位",
   "scored": true,
-  "status": "open",
+  "status": "stop",
   "source": "discord",
-  "last_check": "2026-10-30T14:30:34-04:00"
+  "last_check": "2026-10-30T14:30:34-04:00",
+  "exit": 320.0,
+  "exit_time": "2026-10-30T14:30:00-04:00",
+  "r": -1.0,
+  "ret": -4.062
  },
  {
   "id": "muse-SPCX-2026-10-20T08:51:40-04:00",
@@ -1089,7 +1093,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-30T14:30:34-04:00"
+  "last_check": "2026-10-30T14:45:28-04:00"
  },
  {
   "id": "claude-NVDA-2026-10-30T13:42:00-04:00",
@@ -1105,7 +1109,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-30T14:30:34-04:00"
+  "last_check": "2026-10-30T14:45:28-04:00"
  },
  {
   "id": "claude-SPCX-2026-10-30T13:42:00-04:00",
@@ -1121,6 +1125,6 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-10-30T14:30:34-04:00"
+  "last_check": "2026-10-30T14:45:28-04:00"
  }
 ]
