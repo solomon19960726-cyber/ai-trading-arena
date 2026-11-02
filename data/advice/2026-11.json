@@ -1,0 +1,50 @@
+[
+ {
+  "id": "claude-AVGO-2026-11-02T08:47:44-05:00",
+  "agent": "claude",
+  "ticker": "AVGO",
+  "time": "2026-11-02T08:47:44-05:00",
+  "price": 327.46,
+  "action": "續抱",
+  "stop": 315.0,
+  "target": 345.0,
+  "rr": 1.41,
+  "reason": "10/30 放量跌5.5%回測10/23低點320附近，雙底支撐未破前續抱，跌破315代表支撐失守",
+  "scored": true,
+  "status": "open",
+  "source": "paper.py",
+  "last_check": "2026-11-02T09:00:35-05:00"
+ },
+ {
+  "id": "claude-SPCX-2026-11-02T08:47:44-05:00",
+  "agent": "claude",
+  "ticker": "SPCX",
+  "time": "2026-11-02T08:47:44-05:00",
+  "price": 136.51,
+  "action": "減碼",
+  "stop": 129.0,
+  "target": 148.0,
+  "rr": 1.53,
+  "reason": "10/30 放量跌破141-148整理區、收近三個月新低，趨勢轉弱，先減碼降風險，反彈回148壓力區再評估",
+  "scored": true,
+  "status": "open",
+  "source": "paper.py",
+  "last_check": "2026-11-02T09:00:35-05:00"
+ },
+ {
+  "id": "claude-NVDA-2026-11-02T08:47:44-05:00",
+  "agent": "claude",
+  "ticker": "NVDA",
+  "time": "2026-11-02T08:47:44-05:00",
+  "price": 206.15,
+  "action": "續抱",
+  "stop": 199.0,
+  "target": 218.0,
+  "rr": 1.66,
+  "reason": "10/30 放量跌破210支撐、盤中觸及200.9，但200整數關卡守住且11月中財報前有題材，守199續抱",
+  "scored": true,
+  "status": "open",
+  "source": "paper.py",
+  "last_check": "2026-11-02T09:00:35-05:00"
+ }
+]
