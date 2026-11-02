@@ -1,0 +1,5 @@
+{"agent":"claude","action":"advice","time":"2026-11-02T17:42:09-05:00","items":[
+{"ticker":"AVGO","action":"續抱","stop":309,"target":352,"reason":"跌回六個月低點 319 附近測二次底，仍在 20/50/100 日線下，跌破 309 確認破底就出場；MRVL 併 Lumentum 屬競爭雜音"},
+{"ticker":"NVDA","action":"續抱","stop":194,"target":219,"reason":"連兩天放量跌到 20 日低點 201 附近，均線全在上方偏空，守 194（前低下緣），反彈先看 20 日線 219"},
+{"ticker":"SPCX","action":"減碼","stop":127,"target":151,"reason":"自 225 高點一路低點下移、跌破 20/50/100 日線且貼近 134.5 區間低點，R:R 僅約 1.4，建議先減半降低曝險"}
+],"prices":{"AVGO":321.9,"NVDA":202.14,"SPCX":136.83}}
