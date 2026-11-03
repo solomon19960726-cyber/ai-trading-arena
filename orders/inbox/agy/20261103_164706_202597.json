@@ -1,0 +1,10 @@
+{
+  "agent": "agy",
+  "action": "open",
+  "ticker": "NVDA",
+  "side": "long",
+  "qty": 10,
+  "stop": 204.0,
+  "target": 228.0,
+  "reason": "AMD盤後財報全面超預期（資料中心翻倍、指引大增）消除AI放緩疑慮，帶動NVDA盤後放量突破210關鍵頸線，以小部位建立右側試單，嚴守204停損"
+}
