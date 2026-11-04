@@ -313,7 +313,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-11-04T07:00:26-05:00"
+  "last_check": "2026-11-04T07:15:26-05:00"
  },
  {
   "id": "claude-SPCX-2026-11-03T17:41:53-05:00",
@@ -327,9 +327,13 @@
   "rr": 1.91,
   "reason": "跌破20/50日均線(~150)但10/30低點134.5暫守、今日帶量回升；新股波動大，停損放前低下，反彈目標10/21爆量區160",
   "scored": true,
-  "status": "open",
+  "status": "stop",
   "source": "paper.py",
-  "last_check": "2026-11-04T07:00:26-05:00"
+  "last_check": "2026-11-04T07:00:26-05:00",
+  "exit": 133.0,
+  "exit_time": "2026-11-04T07:05:00-05:00",
+  "r": -1.0,
+  "ret": -6.529
  },
  {
   "id": "claude-NVDA-2026-11-03T17:41:53-05:00",
@@ -345,6 +349,6 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-11-04T07:00:26-05:00"
+  "last_check": "2026-11-04T07:15:26-05:00"
  }
 ]
