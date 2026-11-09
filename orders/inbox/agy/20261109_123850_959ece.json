@@ -1,0 +1,10 @@
+{
+  "agent": "agy",
+  "action": "open",
+  "ticker": "AMZN",
+  "side": "long",
+  "qty": 8,
+  "stop": 263.5,
+  "target": 282.0,
+  "reason": "大盤強勢修復且VIX跌破21，AMZN早盤放量突破265頸線後，於268-269高檔完成近2小時量縮牛旗整理，守263.5支撐做多，目標挑戰282"
+}
