@@ -1,5 +1,5 @@
 {
- "date": "2026-11-02",
+ "date": "2026-11-09",
  "tickers": [
   "A",
   "AAPL",
@@ -281,7 +281,6 @@
   "KMI",
   "KO",
   "KR",
-  "KVUE",
   "L",
   "LDOS",
   "LEN",
@@ -358,6 +357,7 @@
   "O",
   "ODFL",
   "OKE",
+  "OKTA",
   "OMC",
   "ON",
   "ORCL",
