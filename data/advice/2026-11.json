@@ -1511,9 +1511,13 @@
   "rr": 1.8,
   "reason": "今日帶量漲5.5%收364，站回50日線(345.6)並挑戰100日線(365)，Google TPU 擴產利多；守住50日線下方即續抱",
   "scored": true,
-  "status": "open",
+  "status": "stop",
   "source": "paper.py",
-  "last_check": "2026-11-13T09:57:23-05:00"
+  "last_check": "2026-11-13T09:57:23-05:00",
+  "exit": 344.0,
+  "exit_time": "2026-11-13T10:00:00-05:00",
+  "r": -1.0,
+  "ret": -5.495
  },
  {
   "id": "claude-SPCX-2026-11-12T17:41:02-05:00",
@@ -1529,7 +1533,7 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-11-13T09:57:23-05:00"
+  "last_check": "2026-11-13T10:12:23-05:00"
  },
  {
   "id": "claude-NVDA-2026-11-12T17:41:02-05:00",
@@ -1545,6 +1549,6 @@
   "scored": true,
   "status": "open",
   "source": "paper.py",
-  "last_check": "2026-11-13T09:57:23-05:00"
+  "last_check": "2026-11-13T10:12:23-05:00"
  }
 ]
