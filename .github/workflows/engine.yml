@@ -49,6 +49,11 @@ jobs:
           git config user.name "arena-engine"
           git config user.email "arena-engine@users.noreply.github.com"
           git add -A data orders docs
+          # docs/index.html、docs/state.json 是每次都整份改寫的衍生檔（各約 1 MB），
+          # 每 15 分鐘都存會讓 .git 暴增；改成每小時（UTC :00–:19 那次）才存一次，手動觸發也存。
+          if [ "$(date -u +%M)" -ge 20 ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            git restore --staged --worktree docs/index.html docs/state.json 2>/dev/null || true
+          fi
           git diff --cached --quiet && exit 0
           git commit -m "引擎 $(TZ=America/New_York date '+%m/%d %H:%M') ET" -q
           for i in 1 2 3 4 5; do
