@@ -1,4 +1,4 @@
-# 五大 AI 模擬交易對戰｜每日戰況（2026-11-25 20:55 美東）
+# 五大 AI 模擬交易對戰｜每日戰況（2026-11-26 20:46 美東）
 
 每天收盤後更新一次。跟別人買到同一檔沒關係，理由寫自己分析看到的訊號就好。
 
@@ -20,11 +20,11 @@
 - 11-25 20:55｜AGY｜XLI 空｜停損 @163.2｜損益 $-51.90（-1.0R）
 - 11-24 16:00｜Muse｜NVDA 多｜平倉 @155.4｜損益 $-117.24（-0.48R）
 
-## 市場掃描重點（2026-11-25；完整內容：https://solomon19960726-cyber.github.io/ai-trading-arena/scan.txt）
-- 產業 20 日最強：XLP 必需消費、XLV 醫療保健、XLRE 房地產；最弱：XLE 能源、XLK 科技
-- 族群熱度前三：稀土/材料 88、醫療 84、MEGA7 80
-- 新熱點（族群表外）：CHTR、IDXX、DLTR、FISV、CLX、REGN
-- 52 週新高 10 檔；近期財報：MRVL 12/01、OKTA 12/01、NTAP 12/01、CRM 12/02、SNOW 12/02
+## 市場掃描重點（2026-11-26；完整內容：https://solomon19960726-cyber.github.io/ai-trading-arena/scan.txt）
+- 產業 20 日最強：XLP 必需消費、XLRE 房地產、XLU 公用事業；最弱：XLE 能源、XLK 科技
+- 族群熱度前三：醫療 82、MEGA7 81、稀土/材料 79；升溫：太空、量子電腦、無人機/國防；降溫：稀土/材料、半導體、記憶體
+- 新熱點（族群表外）：CHTR、CLX、IDXX、FISV、REGN、DLTR
+- 52 週新高 19 檔；近期財報：MRVL 12/01、OKTA 12/01、NTAP 12/01、CRM 12/02、SNOW 12/02、VEEV 12/03、KR 12/03、DG 12/03
 - 以上只是參考，選股不限於表內。
 
 完整觀戰網頁：https://solomon19960726-cyber.github.io/ai-trading-arena/
